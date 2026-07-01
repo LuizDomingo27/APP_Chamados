@@ -18,6 +18,68 @@ def get_custom_css() -> str:
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=Inter:wght@400;500;600&display=swap');
 
+/* =========================================================================
+   LOCK DE TEMA LIGHT — necessário no deploy do Streamlit Community Cloud.
+   Mesmo com [theme] base="light" no config.toml, alguns containers nativos
+   (sidebar, header, popover, blocos, iframe) ainda seguem a preferência de
+   cor do sistema operacional/navegador (prefers-color-scheme: dark) do
+   usuário, gerando faixas escuras. Forçamos color-scheme:light e o fundo
+   de cada container nativo com !important para sobrepor esse
+   comportamento em qualquer ambiente de deploy.
+   ========================================================================= */
+html {{
+    color-scheme: light !important;
+}}
+
+.stApp,
+[data-testid="stAppViewContainer"],
+[data-testid="stHeader"],
+[data-testid="stToolbar"],
+[data-testid="stBottomBlockContainer"],
+[data-testid="stMain"],
+[data-testid="stMainBlockContainer"] {{
+    background-color: {p['bg']} !important;
+    color: {p['text']} !important;
+}}
+
+[data-testid="stSidebar"],
+[data-testid="stSidebarContent"] {{
+    background-color: {p['surface']} !important;
+    color: {p['text']} !important;
+}}
+
+[data-testid="stSidebar"] * {{
+    color: {p['text']} !important;
+}}
+
+[data-testid="stPopoverBody"],
+div[data-baseweb="popover"],
+div[data-baseweb="popover"] div {{
+    background-color: {p['surface']} !important;
+    color: {p['text']} !important;
+}}
+
+[data-testid="stExpander"],
+[data-testid="stVerticalBlock"],
+[data-testid="stHorizontalBlock"] {{
+    background-color: transparent !important;
+}}
+
+/* iframe usado pelos gráficos ECharts — garante fundo claro por trás do SVG */
+iframe {{
+    background-color: transparent !important;
+    color-scheme: light !important;
+}}
+
+/* Inputs nativos (text_input, date_input, multiselect, selectbox) */
+input, textarea, select,
+[data-baseweb="input"],
+[data-baseweb="select"],
+[data-baseweb="datepicker"] {{
+    background-color: {p['surface']} !important;
+    color: {p['text']} !important;
+}}
+
 html, body, [class*="css"] {{
     font-family: 'Inter', sans-serif;
 }}

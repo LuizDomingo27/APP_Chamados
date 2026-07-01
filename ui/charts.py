@@ -40,12 +40,17 @@ def render_echarts(option: dict, height: int = 380) -> None:
     html = f"""
     <html>
     <head>
+    <meta name="color-scheme" content="light">
     <style>
+        :root {{
+            color-scheme: light;
+        }}
         html, body {{
             margin: 0;
             padding: 0;
             overflow: hidden;
             background: transparent;
+            color-scheme: light;
         }}
         #{div_id} {{
             width: 100%;
