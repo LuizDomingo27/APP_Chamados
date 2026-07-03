@@ -22,10 +22,10 @@ from core.config import (
     COL_OFICINA,
     TOP_N_OFICINAS,
 )
-from core.utils import safe_unique_sorted
+from core.utils import safe_unique_sorted, select_all_popover
 from services.data_loader import load_dados_consolidados, validate_workbook
 from services.export_service import build_excel_report
-from services.filter_service import apply_all_filters
+from services.filter_service import apply_all_filters, get_available_weeks
 from services.kpi_service import (
     agregado_por_categoria,
     agregado_por_oficina,
@@ -117,6 +117,12 @@ def _render_sidebar_filters(df):
     start, end = (date_range if isinstance(date_range, tuple) and len(date_range) == 2
                   else (min_date.date(), max_date.date()))
 
+    semanas_disponiveis = get_available_weeks(df)
+    with st.sidebar:
+        semanas_selecionadas = select_all_popover(
+            "Semana(s)", semanas_disponiveis, key="semanas_filter", icon="📆"
+        )
+
     numero_chamado = st.sidebar.text_input("Número do chamado", placeholder="Ex: 25128")
 
     oficinas_disponiveis = safe_unique_sorted(df[COL_OFICINA])
@@ -157,12 +163,12 @@ def _render_sidebar_filters(df):
         st.cache_data.clear()
         st.rerun()
 
-    return start, end, numero_chamado, oficinas_selecionadas
+    return start, end, numero_chamado, oficinas_selecionadas, semanas_selecionadas
 
 
 def _render_dashboard(df) -> None:
-    start, end, numero_chamado, oficinas = _render_sidebar_filters(df)
-    filtrado = apply_all_filters(df, start, end, numero_chamado, oficinas)
+    start, end, numero_chamado, oficinas, semanas = _render_sidebar_filters(df)
+    filtrado = apply_all_filters(df, start, end, numero_chamado, oficinas, semanas)
 
     render_header(
         title="Central de Acompanhamento de Chamados",
