@@ -22,7 +22,7 @@ from core.config import (
     COL_OFICINA,
     TOP_N_OFICINAS,
 )
-from core.utils import safe_unique_sorted, select_all_popover
+from core.utils import safe_unique_sorted
 from services.data_loader import load_dados_consolidados, validate_workbook
 from services.export_service import build_excel_report
 from services.filter_service import apply_all_filters, get_available_weeks
@@ -118,10 +118,11 @@ def _render_sidebar_filters(df):
                   else (min_date.date(), max_date.date()))
 
     semanas_disponiveis = get_available_weeks(df)
-    with st.sidebar:
-        semanas_selecionadas = select_all_popover(
-            "Semana(s)", semanas_disponiveis, key="semanas_filter", icon="📆"
-        )
+    semana_opcoes = ["Todas as semanas"] + semanas_disponiveis
+    semana_escolhida = st.sidebar.selectbox("📆 Semana", semana_opcoes)
+    semanas_selecionadas = (
+        None if semana_escolhida == "Todas as semanas" else [semana_escolhida]
+    )
 
     numero_chamado = st.sidebar.text_input("Número do chamado", placeholder="Ex: 25128")
 
