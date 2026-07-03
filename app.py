@@ -127,35 +127,11 @@ def _render_sidebar_filters(df):
     numero_chamado = st.sidebar.text_input("Número do chamado", placeholder="Ex: 25128")
 
     oficinas_disponiveis = safe_unique_sorted(df[COL_OFICINA])
-    state_key = "_select_all_oficinas_filter"
-    if state_key not in st.session_state:
-        st.session_state[state_key] = oficinas_disponiveis
-
-    with st.sidebar.popover(
-        f"🏭 Oficina(s): "
-        f"{'Todas' if len(st.session_state[state_key]) == len(oficinas_disponiveis) else len(st.session_state[state_key])}"
-        f" ({len(oficinas_disponiveis)})",
-        use_container_width=True,
-    ):
-        col_a, col_b = st.columns(2)
-        with col_a:
-            if st.button("Selecionar todas", key="oficinas_all", width="stretch"):
-                st.session_state[state_key] = oficinas_disponiveis
-                st.rerun()
-        with col_b:
-            if st.button("Limpar", key="oficinas_clear", width="stretch"):
-                st.session_state[state_key] = []
-                st.rerun()
-        chosen = st.multiselect(
-            "Buscar oficina",
-            options=oficinas_disponiveis,
-            default=st.session_state[state_key],
-            key="oficinas_multiselect",
-            label_visibility="collapsed",
-        )
-        st.session_state[state_key] = chosen
-
-    oficinas_selecionadas = st.session_state[state_key]
+    oficina_opcoes = ["Todas as oficinas"] + oficinas_disponiveis
+    oficina_escolhida = st.sidebar.selectbox("🏭 Oficina", oficina_opcoes)
+    oficinas_selecionadas = (
+        None if oficina_escolhida == "Todas as oficinas" else [oficina_escolhida]
+    )
 
     st.sidebar.divider()
     if st.sidebar.button("🔄 Carregar outro arquivo", width="stretch"):

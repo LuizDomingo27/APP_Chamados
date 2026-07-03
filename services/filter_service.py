@@ -42,8 +42,10 @@ def filter_by_numero_chamado(df: pd.DataFrame, termo: str) -> pd.DataFrame:
     return df[df[COL_NUM_CHAMADO].astype(str).str.contains(termo, case=False, na=False)]
 
 
-def filter_by_oficinas(df: pd.DataFrame, oficinas: list[str]) -> pd.DataFrame:
-    """Filtra pelas oficinas selecionadas. Lista vazia = nenhum resultado."""
+def filter_by_oficinas(df: pd.DataFrame, oficinas: list[str] | None) -> pd.DataFrame:
+    """Filtra pelas oficinas selecionadas. None = sem filtro. Lista vazia = nenhum resultado."""
+    if oficinas is None:
+        return df
     if not oficinas:
         return df.iloc[0:0]
     return df[df[COL_OFICINA].isin(oficinas)]
@@ -90,7 +92,7 @@ def apply_all_filters(
     start: date | None,
     end: date | None,
     numero_chamado: str,
-    oficinas: list[str],
+    oficinas: list[str] | None,
     semanas: list[str] | None = None,
 ) -> pd.DataFrame:
     """Aplica todos os filtros em sequência."""
