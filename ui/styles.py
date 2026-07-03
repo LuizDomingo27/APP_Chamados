@@ -259,14 +259,14 @@ table.ppc-table thead th {{
     position: sticky;
     top: 0;
     z-index: 1;
-    background: linear-gradient(135deg, {p['neon']} 0%, {p['neon_soft']} 100%);
+    background: linear-gradient(180deg, {p['table_header']} 0%, {p['table_header_dark']} 100%);
     color: #FFFFFF;
     font-family: 'Sora', sans-serif;
     font-weight: 600;
     font-size: 11.5px;
     letter-spacing: .03em;
     text-transform: uppercase;
-    text-align: center;
+    text-align: left;
     padding: 9px 10px;
     white-space: nowrap;
     overflow: hidden;
@@ -274,6 +274,22 @@ table.ppc-table thead th {{
 }}
 table.ppc-table thead th:first-child {{ border-top-left-radius: 12px; }}
 table.ppc-table thead th:last-child {{ border-top-right-radius: 12px; }}
+
+.ppc-th-inner {{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+}}
+.ppc-sort-icon {{
+    display: inline-flex;
+    flex-direction: column;
+    line-height: .55;
+    font-size: 8px;
+    letter-spacing: 0;
+    color: rgba(255, 255, 255, .65);
+    flex-shrink: 0;
+}}
 
 table.ppc-table tbody td {{
     padding: 7px 10px;
@@ -286,7 +302,7 @@ table.ppc-table tbody td {{
 }}
 
 table.ppc-table tbody tr:nth-child(even) {{
-    background: {p['surface_alt']};
+    background: {p['table_stripe']};
 }}
 table.ppc-table tbody tr:nth-child(odd) {{
     background: {p['surface']};
@@ -301,6 +317,15 @@ table.ppc-table tbody tr:last-child td {{
 td.ppc-align-left {{ text-align: left; }}
 td.ppc-align-right {{ text-align: right; }}
 td.ppc-align-center {{ text-align: center; }}
+
+.ppc-pill {{
+    display: inline-block;
+    background: {p['table_pill_bg']};
+    color: {p['table_pill_text']};
+    font-weight: 600;
+    border-radius: 999px;
+    padding: 2px 12px;
+}}
 
 /* ---------- Popover de filtros ---------- */
 div[data-testid="stPopover"] button {{

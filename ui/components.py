@@ -146,11 +146,18 @@ def render_styled_dataframe(df: pd.DataFrame, date_columns: list[str] | None = N
 
     alignments = {col: _align_for(col) for col in display_df.columns}
 
+    numeric_cols = {col for col in display_df.columns if pd.api.types.is_numeric_dtype(df[col])}
+
     header_cells = []
     for col in display_df.columns:
         width = narrow_widths.get(col)
         style_attr = f' style="width:{width}"' if width else ""
-        header_cells.append(f"<th{style_attr}>{escape(str(col))}</th>")
+        header_cells.append(
+            f'<th{style_attr}><span class="ppc-th-inner">'
+            f'<span>{escape(str(col))}</span>'
+            f'<span class="ppc-sort-icon">▲▼</span>'
+            f"</span></th>"
+        )
     header_html = "".join(header_cells)
 
     rows_html = []
@@ -159,8 +166,9 @@ def render_styled_dataframe(df: pd.DataFrame, date_columns: list[str] | None = N
         for col in display_df.columns:
             raw = row[col]
             text = escape(str(raw)) if pd.notna(raw) else "—"
+            cell_content = f'<span class="ppc-pill">{text}</span>' if col in numeric_cols and pd.notna(raw) else text
             cells.append(
-                f'<td class="{alignments[col]}" title="{text}">{text}</td>'
+                f'<td class="{alignments[col]}" title="{text}">{cell_content}</td>'
             )
         rows_html.append(f"<tr>{''.join(cells)}</tr>")
 
