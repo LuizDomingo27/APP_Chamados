@@ -14,6 +14,7 @@ aberto).
 from __future__ import annotations
 
 import io
+import math
 import sys
 from pathlib import Path
 
@@ -298,7 +299,37 @@ def _render_dashboard(df) -> None:
         COL_TEMPO_ATENDIMENTO_DIAS,
     ]
     detalhe_cols = [c for c in detalhe_cols if c in filtrado.columns]
-    tabela_prioridade = tabela_ordenada_por_prioridade(filtrado)[detalhe_cols]
+    tabela_fila = tabela_ordenada_por_prioridade(filtrado)[detalhe_cols]
+
+    # Filtro local por dias em aberto — afeta SOMENTE esta tabela (não os
+    # KPIs, gráficos ou demais tabelas). A métrica cobre todas as linhas:
+    # pendentes usam "Dias em Aberto" (espera até hoje) e concluídas usam
+    # "Tempo de Atendimento" (dias que ficaram abertas). Slider de faixa
+    # com mínimo de 1 dia: reposições abertas há menos de 1 dia ficam fora.
+    dias_efetivo = tabela_fila[COL_DIAS_ABERTO].astype("Float64")
+    if COL_TEMPO_ATENDIMENTO_DIAS in tabela_fila.columns:
+        dias_efetivo = dias_efetivo.fillna(
+            tabela_fila[COL_TEMPO_ATENDIMENTO_DIAS].astype("Float64")
+        )
+
+    dias_validos = dias_efetivo.dropna()
+    max_dias = math.ceil(float(dias_validos.max())) if not dias_validos.empty else 1
+    if max_dias > 1:
+        low_dias, high_dias = st.slider(
+            "🕒 Filtrar por dias em aberto",
+            min_value=1,
+            max_value=max_dias,
+            value=(1, max_dias),
+            key="rep_fila_dias_aberto",
+            help="Mostra na fila apenas reposições cujo tempo em aberto está "
+            "dentro do intervalo. Afeta somente esta tabela.",
+        )
+    else:
+        low_dias, high_dias = 1, max_dias
+
+    tabela_prioridade = tabela_fila[
+        dias_efetivo.notna() & dias_efetivo.between(low_dias, high_dias)
+    ]
     render_styled_dataframe(
         tabela_prioridade,
         date_columns=[COL_CRIADO_EM, COL_CONCLUIDO_EM],
@@ -306,9 +337,11 @@ def _render_dashboard(df) -> None:
     )
 
     # ---------------- Exportação ----------------
+    # A exportação leva a fila completa (sem o filtro visual de dias em
+    # aberto), respeitando apenas os filtros da barra lateral.
     st.divider()
     excel_bytes = build_excel_report_reposicao(
-        tabela_reposicoes=tabela_prioridade,
+        tabela_reposicoes=tabela_fila,
         agregado_oficina=agregado_por_oficina(filtrado),
         oficinas_pendentes=oficinas_pendentes_df,
         date_columns=[COL_CRIADO_EM, COL_CONCLUIDO_EM],
