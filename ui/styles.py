@@ -253,12 +253,15 @@ td.ppc-align-left {{ text-align: left; }}
 td.ppc-align-right {{ text-align: right; }}
 td.ppc-align-center {{ text-align: center; }}
 
-/* ---------- Popover de filtros ---------- */
-div[data-testid="stPopover"] button {{
+/* ---------- Dropdown de filtros (multiselect) ---------- */
+div[data-testid="stMultiSelect"] > div > div {{
     border-radius: 12px !important;
     border: 1px solid {p['border']} !important;
     background: {p['surface']} !important;
-    font-weight: 500;
+}}
+div[data-testid="stMultiSelect"] span[data-baseweb="tag"] {{
+    background: {p['neon']} !important;
+    border-radius: 999px !important;
 }}
 
 /* ---------- Seção títulos ---------- */

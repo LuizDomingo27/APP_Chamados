@@ -78,9 +78,10 @@ def render_status_kpis(status_counts: dict[str, int]) -> None:
 
 
 def render_multiselect_all(label: str, options: list[str], state_key: str) -> list[str]:
-    """Filtro multiselect no sidebar, dentro de um popover: o botão mostra um
-    resumo compacto ("Todas (12)" / "3 (12)") em vez de listar cada item
-    escolhido como tag, e traz atalhos "Selecionar todas" / "Limpar".
+    """Filtro multiselect no sidebar, no estilo dropdown nativo do Streamlit
+    (a lista de opções abre direto ao clicar no campo, sem um popover
+    escondendo o conteúdo atrás de um botão). Atalhos "Selecionar todas" /
+    "Limpar" ficam logo abaixo do dropdown.
 
     Lista vazia é uma seleção válida (o usuário limpou tudo) e é tratada
     pelos filtros como "sem filtro aplicado" — ver
@@ -90,7 +91,10 @@ def render_multiselect_all(label: str, options: list[str], state_key: str) -> li
     (nenhum `default=` é passado): uma vez que uma key já foi montada, o
     Streamlit ignora qualquer `default` em reruns seguintes e mantém o
     valor anterior — então "Selecionar todas"/"Limpar" precisam escrever
-    diretamente em session_state[widget_key] para realmente colar.
+    diretamente em session_state[widget_key] para realmente colar. Por
+    isso os botões são renderizados ANTES do multiselect: o Streamlit
+    proíbe escrever em session_state[widget_key] depois que o widget
+    daquela key já foi instanciado no mesmo run.
     """
     widget_key = f"{state_key}_multiselect"
 
@@ -102,33 +106,24 @@ def render_multiselect_all(label: str, options: list[str], state_key: str) -> li
         # validar o valor atual contra a nova lista de opções.
         st.session_state[widget_key] = [o for o in st.session_state[widget_key] if o in options]
 
-    selecionados = st.session_state[widget_key]
+    st.sidebar.markdown(f"**{label}**")
 
-    if not options:
-        resumo = "Nenhuma"
-    elif set(selecionados) == set(options):
-        resumo = "Todas"
-    elif not selecionados:
-        resumo = "Nenhuma"
-    else:
-        resumo = str(len(selecionados))
+    #col_a, col_b = st.sidebar.columns(2)
+    #with col_a:
+    #    if st.button("Selecionar todas", key=f"{state_key}_all", width="stretch"):
+    #        st.session_state[widget_key] = list(options)
+    #        st.rerun()
+    #with col_b:
+    #    if st.button("Limpar", key=f"{state_key}_clear", width="stretch"):
+    #        st.session_state[widget_key] = []
+    #        st.rerun()
 
-    with st.sidebar.popover(f"{label}: {resumo} ({len(options)})", use_container_width=True):
-        col_a, col_b = st.columns(2)
-        with col_a:
-            if st.button("Selecionar todas", key=f"{state_key}_all", width="stretch"):
-                st.session_state[widget_key] = list(options)
-                st.rerun()
-        with col_b:
-            if st.button("Limpar", key=f"{state_key}_clear", width="stretch"):
-                st.session_state[widget_key] = []
-                st.rerun()
-        st.multiselect(
-            "Buscar",
-            options=options,
-            key=widget_key,
-            label_visibility="collapsed",
-        )
+    st.sidebar.multiselect(
+        label,
+        options=options,
+        key=widget_key,
+        label_visibility="collapsed",
+    )
 
     return st.session_state[widget_key]
 
