@@ -135,15 +135,15 @@ def build_trend_line_option(trend_df: pd.DataFrame) -> dict:
                         "show": True,
                         "position": "end",
                         "formatter": f"Média: {media:.1f}",
-                        "color": "#FFFFFF",
-                        "backgroundColor": PALETTE["warning"],
+                        "color": PALETTE["table_badge_text"],
+                        "backgroundColor": PALETTE["table_badge_bg"],
                         "padding": [4, 8],
                         "borderRadius": 6,
                         "fontFamily": _CHART_FONT,
                         "fontSize": 11,
                         "fontWeight": 600,
                     },
-                    "lineStyle": {"color": PALETTE["warning"], "type": "dashed", "width": 1.5},
+                    "lineStyle": {"color": PALETTE["table_badge_text"], "type": "dashed", "width": 1.5},
                     "data": [{"yAxis": media}],
                 },
             }
@@ -202,14 +202,20 @@ def build_oficina_ranking_option(ranking_df: pd.DataFrame) -> dict:
     }
 
 
-def build_categoria_bar_option(categoria_df: pd.DataFrame, sort_ascending: bool = True) -> dict:
+def build_categoria_bar_option(
+    categoria_df: pd.DataFrame,
+    sort_ascending: bool = True,
+    show_trend: bool = False,
+) -> dict:
     """
     Barra vertical simples com total de chamados por categoria.
 
     Esta função também é reaproveitada pelas tendências semanal/mensal
     (mesmo formato de colunas) — nesses casos ``sort_ascending`` deve vir
     False, pois a ordem cronológica das barras não pode ser embaralhada
-    pela ordenação por valor.
+    pela ordenação por valor, e ``show_trend=True`` sobrepõe uma linha
+    acompanhando os mesmos valores das colunas, deixando a variação entre
+    os períodos mais fácil de enxergar.
     """
     df_sorted = (
         categoria_df.sort_values("Total de Chamados", ascending=True)
@@ -218,6 +224,41 @@ def build_categoria_bar_option(categoria_df: pd.DataFrame, sort_ascending: bool 
     )
     nomes = df_sorted.iloc[:, 0].astype(str).tolist()
     valores = df_sorted["Total de Chamados"].tolist()
+
+    series: list[dict] = [
+        {
+            "name": "Total",
+            "type": "bar",
+            "data": valores,
+            "barWidth": "55%",
+            "itemStyle": {
+                "borderRadius": [8, 8, 0, 0],
+                "color": {
+                    "type": "linear",
+                    "x": 0, "y": 0, "x2": 0, "y2": 1,
+                    "colorStops": [
+                        {"offset": 0, "color": PALETTE["neon"]},
+                        {"offset": 1, "color": PALETTE["neon_soft"]},
+                    ],
+                },
+            },
+        }
+    ]
+
+    if show_trend:
+        series.append(
+            {
+                "name": "Variação",
+                "type": "line",
+                "data": valores,
+                "smooth": True,
+                "symbol": "circle",
+                "symbolSize": 7,
+                "z": 3,
+                "lineStyle": {"color": PALETTE["warning"], "width": 2.5},
+                "itemStyle": {"color": PALETTE["warning"], "borderColor": "#FFFFFF", "borderWidth": 1.5},
+            }
+        )
 
     return {
         "tooltip": {**_TOOLTIP_BASE, "trigger": "axis", "axisPointer": {"type": "shadow"}},
@@ -242,22 +283,5 @@ def build_categoria_bar_option(categoria_df: pd.DataFrame, sort_ascending: bool 
             "axisTick": {"show": False},
             "axisLabel": {"show": False},
         },
-        "series": [
-            {
-                "type": "bar",
-                "data": valores,
-                "barWidth": "55%",
-                "itemStyle": {
-                    "borderRadius": [8, 8, 0, 0],
-                    "color": {
-                        "type": "linear",
-                        "x": 0, "y": 0, "x2": 0, "y2": 1,
-                        "colorStops": [
-                            {"offset": 0, "color": PALETTE["neon"]},
-                            {"offset": 1, "color": PALETTE["neon_soft"]},
-                        ],
-                    },
-                },
-            }
-        ],
+        "series": series,
     }

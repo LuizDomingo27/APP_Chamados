@@ -261,11 +261,11 @@ def _render_dashboard(df) -> None:
     with tab_semana:
         semana_df = tendencia_semanal(filtrado)
         if not semana_df.empty:
-            render_echarts(build_categoria_bar_option(semana_df, sort_ascending=False), height=360)
+            render_echarts(build_categoria_bar_option(semana_df, sort_ascending=False, show_trend=True), height=360)
     with tab_mes:
         mes_df = tendencia_mensal(filtrado)
         if not mes_df.empty:
-            render_echarts(build_categoria_bar_option(mes_df, sort_ascending=False), height=360)
+            render_echarts(build_categoria_bar_option(mes_df, sort_ascending=False, show_trend=True), height=360)
 
     # ---------------- Rankings ----------------
     col_rank, col_solic = st.columns([1.2, 1])
