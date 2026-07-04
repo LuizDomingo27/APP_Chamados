@@ -118,11 +118,11 @@ def render_multiselect_all(label: str, options: list[str], state_key: str) -> li
     #        st.session_state[widget_key] = []
     #        st.rerun()
 
-    st.sidebar.multiselect(
+    st.sidebar.selectbox(
         label,
         options=options,
         key=widget_key,
-        label_visibility="hidden",
+        label_visibility="visible",
     )
 
     return st.session_state[widget_key]
