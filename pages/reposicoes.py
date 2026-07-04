@@ -40,7 +40,6 @@ from services.export_service import build_excel_report_reposicao
 from services.kpi_service import (
     agregado_por_categoria,
     agregado_por_oficina,
-    contagem_por_prioridade,
     contagem_por_status,
     ranking_oficinas,
     tabela_ordenada_por_prioridade,
@@ -69,7 +68,6 @@ from ui.components import (
     render_destaque_card,
     render_header,
     render_kpi_card,
-    render_priority_kpis,
     render_section_title,
     render_status_kpis,
     render_styled_dataframe,
@@ -124,6 +122,7 @@ def _render_sidebar_filters(df):
         value=(min_date.date(), max_date.date()),
         min_value=min_date.date(),
         max_value=max_date.date(),
+        format="DD/MM/YYYY",
         key="rep_date_range",
     )
     start, end = (date_range if isinstance(date_range, tuple) and len(date_range) == 2
@@ -134,35 +133,12 @@ def _render_sidebar_filters(df):
     )
 
     oficinas_disponiveis = safe_unique_sorted(df[COL_OFICINA])
-    state_key = "_select_all_oficinas_filter_rep"
-    if state_key not in st.session_state:
-        st.session_state[state_key] = oficinas_disponiveis
-
-    with st.sidebar.popover(
-        f"🏭 Oficina(s): "
-        f"{'Todas' if len(st.session_state[state_key]) == len(oficinas_disponiveis) else len(st.session_state[state_key])}"
-        f" ({len(oficinas_disponiveis)})",
-        use_container_width=True,
-    ):
-        col_a, col_b = st.columns(2)
-        with col_a:
-            if st.button("Selecionar todas", key="oficinas_all_rep", width="stretch"):
-                st.session_state[state_key] = oficinas_disponiveis
-                st.rerun()
-        with col_b:
-            if st.button("Limpar", key="oficinas_clear_rep", width="stretch"):
-                st.session_state[state_key] = []
-                st.rerun()
-        chosen = st.multiselect(
-            "Buscar oficina",
-            options=oficinas_disponiveis,
-            default=st.session_state[state_key],
-            key="oficinas_multiselect_rep",
-            label_visibility="collapsed",
-        )
-        st.session_state[state_key] = chosen
-
-    oficinas_selecionadas = st.session_state[state_key]
+    oficinas_selecionadas = st.sidebar.multiselect(
+        "🏭 Oficina(s)",
+        options=oficinas_disponiveis,
+        default=oficinas_disponiveis,
+        key="oficinas_select_rep",
+    )
 
     st.sidebar.divider()
     if st.sidebar.button("🔄 Carregar outro arquivo", width="stretch", key="rep_reset"):
@@ -240,11 +216,6 @@ def _render_dashboard(df) -> None:
             height=320,
         )
 
-    # ---------------- Prioridade ----------------
-    render_section_title("Por Prioridade")
-    priority_counts = contagem_por_prioridade(filtrado)
-    render_priority_kpis(priority_counts)
-
     # ---------------- Destaques ----------------
     render_section_title("Destaques do Período")
     destaques = calcular_destaques_reposicao(filtrado)
@@ -272,14 +243,10 @@ def _render_dashboard(df) -> None:
     render_section_title("Tempo de Atendimento")
     tempo = tempo_atendimento_stats(filtrado)
     if tempo.qtd_amostras > 0:
-        t1, t2, t3, t4 = st.columns(4)
+        t1, t2 = st.columns(2)
         with t1:
             render_kpi_card("Média", f"{tempo.media_dias} dia(s)", subtitle="tempo médio de atendimento")
         with t2:
-            render_kpi_card("Mediana", f"{tempo.mediana_dias} dia(s)", subtitle="tempo típico de atendimento")
-        with t3:
-            render_kpi_card("Mais rápido", f"{tempo.min_dias} dia(s)", subtitle="menor tempo registrado")
-        with t4:
             render_kpi_card("Mais demorado", f"{tempo.max_dias} dia(s)", subtitle="maior tempo registrado")
         st.caption(f"Calculado sobre {tempo.qtd_amostras} reposição(ões) já concluída(s) no filtro atual.")
     else:
@@ -295,11 +262,11 @@ def _render_dashboard(df) -> None:
     with tab_semana:
         semana_df = tendencia_semanal(filtrado)
         if not semana_df.empty:
-            render_echarts(build_categoria_bar_option(semana_df), height=360)
+            render_echarts(build_categoria_bar_option(semana_df, sort_ascending=False), height=360)
     with tab_mes:
         mes_df = tendencia_mensal(filtrado)
         if not mes_df.empty:
-            render_echarts(build_categoria_bar_option(mes_df), height=360)
+            render_echarts(build_categoria_bar_option(mes_df, sort_ascending=False), height=360)
 
     # ---------------- Rankings ----------------
     col_rank, col_solic = st.columns([1.2, 1])

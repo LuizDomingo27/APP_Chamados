@@ -21,13 +21,20 @@ from core.config import PALETTE
 
 _ECHARTS_CDN = "https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"
 
+# Fonte dos rótulos dos gráficos: o componente roda num iframe isolado que
+# não carrega a fonte "Inter" (importada só no documento principal via
+# Google Fonts), então "fontFamily: Inter" sem fallback caía no serif
+# padrão do navegador — daí o visual "ofuscado". Usamos a stack de fonte
+# nativa do sistema, sempre disponível, sem depender de rede.
+_CHART_FONT = "'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
+
 _TOOLTIP_BASE = {
     "backgroundColor": "rgba(16, 36, 31, 0.92)",
     "borderColor": PALETTE["neon_soft"],
     "borderWidth": 1,
     "borderRadius": 10,
     "padding": [10, 14],
-    "textStyle": {"color": "#FFFFFF", "fontFamily": "Inter, sans-serif", "fontSize": 13},
+    "textStyle": {"color": "#FFFFFF", "fontFamily": _CHART_FONT, "fontSize": 13},
     "extraCssText": "box-shadow: 0 6px 24px rgba(15,191,159,0.25);",
 }
 
@@ -93,14 +100,14 @@ def build_trend_line_option(trend_df: pd.DataFrame) -> dict:
             "axisLine": {"lineStyle": {"color": PALETTE["border"]}},
             "axisTick": {"show": False},
             "splitLine": {"show": False},
-            "axisLabel": {"color": PALETTE["text_muted"], "fontFamily": "Inter"},
+            "axisLabel": {"color": PALETTE["text_muted"], "fontFamily": _CHART_FONT},
         },
         "yAxis": {
             "type": "value",
             "splitLine": {"show": False},
             "axisLine": {"show": False},
             "axisTick": {"show": False},
-            "axisLabel": {"color": PALETTE["text_muted"], "fontFamily": "Inter"},
+            "axisLabel": {"show": False},
         },
         "series": [
             {
@@ -132,7 +139,7 @@ def build_trend_line_option(trend_df: pd.DataFrame) -> dict:
                         "backgroundColor": PALETTE["warning"],
                         "padding": [4, 8],
                         "borderRadius": 6,
-                        "fontFamily": "Inter",
+                        "fontFamily": _CHART_FONT,
                         "fontSize": 11,
                         "fontWeight": 600,
                     },
@@ -158,14 +165,14 @@ def build_oficina_ranking_option(ranking_df: pd.DataFrame) -> dict:
             "splitLine": {"show": False},
             "axisLine": {"show": False},
             "axisTick": {"show": False},
-            "axisLabel": {"color": PALETTE["text_muted"], "fontFamily": "Inter"},
+            "axisLabel": {"color": PALETTE["text_muted"], "fontFamily": _CHART_FONT},
         },
         "yAxis": {
             "type": "category",
             "data": nomes,
             "axisLine": {"show": False},
             "axisTick": {"show": False},
-            "axisLabel": {"color": PALETTE["text"], "fontFamily": "Inter", "fontSize": 12},
+            "axisLabel": {"color": PALETTE["text"], "fontFamily": _CHART_FONT, "fontSize": 12},
         },
         "series": [
             {
@@ -187,7 +194,7 @@ def build_oficina_ranking_option(ranking_df: pd.DataFrame) -> dict:
                     "show": True,
                     "position": "right",
                     "color": PALETTE["text"],
-                    "fontFamily": "Inter",
+                    "fontFamily": _CHART_FONT,
                     "fontWeight": 600,
                 },
             }
@@ -195,20 +202,32 @@ def build_oficina_ranking_option(ranking_df: pd.DataFrame) -> dict:
     }
 
 
-def build_categoria_bar_option(categoria_df: pd.DataFrame) -> dict:
-    """Barra vertical simples com total de chamados por categoria."""
-    nomes = categoria_df.iloc[:, 0].astype(str).tolist()
-    valores = categoria_df["Total de Chamados"].tolist()
+def build_categoria_bar_option(categoria_df: pd.DataFrame, sort_ascending: bool = True) -> dict:
+    """
+    Barra vertical simples com total de chamados por categoria.
+
+    Esta função também é reaproveitada pelas tendências semanal/mensal
+    (mesmo formato de colunas) — nesses casos ``sort_ascending`` deve vir
+    False, pois a ordem cronológica das barras não pode ser embaralhada
+    pela ordenação por valor.
+    """
+    df_sorted = (
+        categoria_df.sort_values("Total de Chamados", ascending=True)
+        if sort_ascending
+        else categoria_df
+    )
+    nomes = df_sorted.iloc[:, 0].astype(str).tolist()
+    valores = df_sorted["Total de Chamados"].tolist()
 
     return {
         "tooltip": {**_TOOLTIP_BASE, "trigger": "axis", "axisPointer": {"type": "shadow"}},
-        "grid": {"left": 40, "right": 20, "top": 20, "bottom": 70, "containLabel": True},
+        "grid": {"left": 20, "right": 20, "top": 20, "bottom": 70, "containLabel": True},
         "xAxis": {
             "type": "category",
             "data": nomes,
             "axisLabel": {
                 "color": PALETTE["text_muted"],
-                "fontFamily": "Inter",
+                "fontFamily": _CHART_FONT,
                 "rotate": 28,
                 "fontSize": 11,
             },
@@ -221,7 +240,7 @@ def build_categoria_bar_option(categoria_df: pd.DataFrame) -> dict:
             "splitLine": {"show": False},
             "axisLine": {"show": False},
             "axisTick": {"show": False},
-            "axisLabel": {"color": PALETTE["text_muted"], "fontFamily": "Inter"},
+            "axisLabel": {"show": False},
         },
         "series": [
             {

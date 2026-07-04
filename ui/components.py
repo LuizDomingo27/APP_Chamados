@@ -111,10 +111,9 @@ def render_styled_dataframe(df: pd.DataFrame, date_columns: list[str] | None = N
     o widget nativo é renderizado em canvas (glide-data-grid) e não aceita
     estilização de linha/cabeçalho via CSS.
 
-    Colunas curtas (status, prioridade, datas, contagens) recebem uma
-    largura fixa estreita; as demais (texto livre, como categoria/oficina)
-    dividem o espaço restante — evita o "visual morto" de colunas curtas
-    esticadas por table-layout:fixed.
+    A largura de cada coluna segue o conteúdo (table-layout: auto do
+    navegador) — sem larguras fixas artificiais estourando ou espremendo
+    colunas.
     """
     date_columns = date_columns or []
     display_df = df.copy()
@@ -127,23 +126,6 @@ def render_styled_dataframe(df: pd.DataFrame, date_columns: list[str] | None = N
     # números ficam à direita.
     centered_cols = {"Status", "Prioridade"}
 
-    # Largura fixa para colunas de conteúdo curto e previsível — o restante
-    # do espaço é dividido automaticamente entre as colunas de texto livre.
-    narrow_widths = {
-        "Status": "100px",
-        "Prioridade": "110px",
-        "Criado em": "110px",
-        "Data de conclusão": "130px",
-        "Concluído em": "110px",
-        "Total de Chamados": "170px",
-        "Categoria": "160px",
-        "Parte da Peça": "150px",
-        "Dias em Aberto": "120px",
-        "Tempo de Atendimento (dias)": "150px",
-        "Qtd. Pendente": "120px",
-        "Solicitação Mais Antiga": "150px",
-    }
-
     def _align_for(col: str) -> str:
         if col in centered_cols:
             return "ppc-align-center"
@@ -153,12 +135,7 @@ def render_styled_dataframe(df: pd.DataFrame, date_columns: list[str] | None = N
 
     alignments = {col: _align_for(col) for col in display_df.columns}
 
-    header_cells = []
-    for col in display_df.columns:
-        width = narrow_widths.get(col)
-        style_attr = f' style="width:{width}"' if width else ""
-        header_cells.append(f"<th{style_attr}>{escape(str(col))}</th>")
-    header_html = "".join(header_cells)
+    header_html = "".join(f"<th>{escape(str(col))}</th>" for col in display_df.columns)
 
     rows_html = []
     for _, row in display_df.iterrows():

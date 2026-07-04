@@ -185,12 +185,13 @@ h1, h2, h3, h4, .kpi-value {{
 }}
 
 table.ppc-table {{
-    width: 100%;
+    width: auto;
+    min-width: 100%;
     border-collapse: separate;
     border-spacing: 0;
     font-family: 'Inter', sans-serif;
     font-size: 12.5px;
-    table-layout: fixed;
+    table-layout: auto;
 }}
 
 table.ppc-table thead th {{
@@ -205,22 +206,17 @@ table.ppc-table thead th {{
     letter-spacing: .03em;
     text-transform: uppercase;
     text-align: center;
-    padding: 9px 10px;
+    padding: 9px 14px;
     white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
 }}
 table.ppc-table thead th:first-child {{ border-top-left-radius: 12px; }}
 table.ppc-table thead th:last-child {{ border-top-right-radius: 12px; }}
 
 table.ppc-table tbody td {{
-    padding: 7px 10px;
+    padding: 7px 14px;
     color: {p['text']};
     border-bottom: 1px solid {p['border']};
     white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 1px;
 }}
 
 table.ppc-table tbody tr:nth-child(even) {{

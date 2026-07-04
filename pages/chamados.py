@@ -114,6 +114,7 @@ def _render_sidebar_filters(df):
         value=(min_date.date(), max_date.date()),
         min_value=min_date.date(),
         max_value=max_date.date(),
+        format="DD/MM/YYYY",
         key="ppc_date_range",
     )
     start, end = (date_range if isinstance(date_range, tuple) and len(date_range) == 2
