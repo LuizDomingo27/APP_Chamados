@@ -205,6 +205,18 @@ def _render_dashboard(df) -> None:
         if not mes_df.empty:
             render_echarts(build_categoria_bar_option(mes_df, sort_ascending=False, show_trend=True), height=360)
 
+    # ---------------- Chamados por Categoria ----------------
+    # Mesma linha de variação (%) das tendências temporais: aqui ela mostra
+    # o quanto cada categoria varia em relação à anterior (ordenadas por
+    # volume, crescente), em taxa percentual.
+    render_section_title("Chamados por Categoria")
+    categoria_df = agregado_por_categoria(filtrado)
+    if not categoria_df.empty:
+        render_echarts(
+            build_categoria_bar_option(categoria_df, sort_ascending=True, show_trend=True),
+            height=380,
+        )
+
     # ---------------- Ranking de Oficinas ----------------
     render_section_title(f"Ranking de Oficinas (Top {TOP_N_OFICINAS})")
     rank_df = ranking_oficinas(filtrado, TOP_N_OFICINAS)
