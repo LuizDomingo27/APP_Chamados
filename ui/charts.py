@@ -273,11 +273,17 @@ def build_categoria_bar_option(
                 {
                     "value": variacao,
                     "itemStyle": {"color": cor},
+                    # Rótulo em "pílula": texto branco sobre fundo sólido na cor
+                    # da variação — no tema light o texto colorido puro ficava
+                    # com contraste baixo e "sumia" sobre o fundo claro.
                     "label": {
                         "show": True,
                         "position": "top",
                         "formatter": texto,
-                        "color": cor,
+                        "color": "#FFFFFF",
+                        "backgroundColor": cor,
+                        "padding": [3, 6],
+                        "borderRadius": 5,
                         "fontFamily": _CHART_FONT,
                         "fontSize": 11,
                         "fontWeight": 700,
