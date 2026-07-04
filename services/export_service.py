@@ -120,3 +120,29 @@ def build_excel_report(
         _write_sheet(writer, agregado_categoria, "Por Categoria")
 
     return buffer.getvalue()
+
+
+def build_excel_report_reposicao(
+    tabela_reposicoes: pd.DataFrame,
+    agregado_oficina: pd.DataFrame,
+    oficinas_pendentes: pd.DataFrame,
+    date_columns: list[str],
+) -> bytes:
+    """
+    Monta o relatório Excel do módulo de Reposições (3 abas) em memória e
+    devolve os bytes prontos para o st.download_button. Segue o mesmo
+    padrão visual de build_excel_report (cabeçalho colorido, auto-fit,
+    painel congelado).
+    """
+    buffer = io.BytesIO()
+    with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
+        _write_sheet(writer, tabela_reposicoes, "Reposições Filtradas", date_columns=date_columns)
+        _write_sheet(writer, agregado_oficina, "Por Oficina")
+        _write_sheet(
+            writer,
+            oficinas_pendentes,
+            "Oficinas Pendentes",
+            date_columns=["Solicitação Mais Antiga"],
+        )
+
+    return buffer.getvalue()

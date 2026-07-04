@@ -4,11 +4,10 @@ primaryColor = "#0FBF9F"
 backgroundColor = "#F5F8F8"
 secondaryBackgroundColor = "#FFFFFF"
 textColor = "#10241F"
-linkColor = "#0FBF9F"
 font = "sans serif"
 
 [server]
-headless = true
+headless = false
 
 [browser]
 gatherUsageStats = false

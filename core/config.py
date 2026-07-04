@@ -37,6 +37,16 @@ COL_NUM_CHAMADO = "Número do Chamado"
 COL_OFICINA = "Oficina"
 COL_SOLICITACAO = "Tipo de Solicitação"
 
+# Colunas derivadas específicas do módulo de Reposições (criadas pelo
+# reposicao_parser_service e reposicao_kpi_service)
+COL_NUM_REPOSICAO = "Número da Reposição"
+COL_ORDEM_PRODUCAO = "Ordem de Produção"
+COL_PARTE_PECA = "Parte da Peça"
+COL_MOTIVO = "Motivo"
+COL_QUANTIDADE_REPOSICAO = "Quantidade Solicitada"
+COL_DIAS_ABERTO = "Dias em Aberto"
+COL_TEMPO_ATENDIMENTO_DIAS = "Tempo de Atendimento (dias)"
+
 # ---------------------------------------------------------------------------
 # Domínio / regras de negócio
 # ---------------------------------------------------------------------------
@@ -73,13 +83,6 @@ PALETTE = {
     "warning": "#FFB020",
     "info": "#3B82F6",
     "success": "#0FBF9F",
-    # Tabela estilizada — cabeçalho verde escuro sólido + zebra em
-    # verde-menta claro + pill de destaque para valores numéricos.
-    "table_header": "#1E6B45",
-    "table_header_dark": "#134A30",
-    "table_stripe": "#E9F8EF",
-    "table_pill_bg": "#CFF3DC",
-    "table_pill_text": "#12603D",
 }
 
 # Cores fixas por status/prioridade — usadas nos cards e gráficos para

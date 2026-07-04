@@ -42,49 +42,11 @@ def filter_by_numero_chamado(df: pd.DataFrame, termo: str) -> pd.DataFrame:
     return df[df[COL_NUM_CHAMADO].astype(str).str.contains(termo, case=False, na=False)]
 
 
-def filter_by_oficinas(df: pd.DataFrame, oficinas: list[str] | None) -> pd.DataFrame:
-    """Filtra pelas oficinas selecionadas. None = sem filtro. Lista vazia = nenhum resultado."""
-    if oficinas is None:
-        return df
+def filter_by_oficinas(df: pd.DataFrame, oficinas: list[str]) -> pd.DataFrame:
+    """Filtra pelas oficinas selecionadas. Lista vazia = nenhum resultado."""
     if not oficinas:
         return df.iloc[0:0]
     return df[df[COL_OFICINA].isin(oficinas)]
-
-
-def _week_label(year: int, week: int) -> str:
-    """Rótulo amigável de uma semana ISO, ex.: 'Semana 27/2026 (29/06 a 05/07)'."""
-    monday = pd.Timestamp.fromisocalendar(int(year), int(week), 1)
-    sunday = monday + pd.Timedelta(days=6)
-    return f"Semana {int(week):02d}/{int(year)} ({monday.strftime('%d/%m')} a {sunday.strftime('%d/%m')})"
-
-
-def _week_label_column(df: pd.DataFrame) -> pd.Series:
-    """Rótulo de semana ISO por linha, a partir de COL_CRIADO_EM (NaT vira None)."""
-    iso = df[COL_CRIADO_EM].dt.isocalendar()
-    return pd.Series(
-        [
-            _week_label(year, week) if pd.notna(year) else None
-            for year, week in zip(iso["year"], iso["week"])
-        ],
-        index=df.index,
-    )
-
-
-def get_available_weeks(df: pd.DataFrame) -> list[str]:
-    """Extrai as semanas (ISO) presentes em COL_CRIADO_EM, ordenadas cronologicamente."""
-    datas = df[COL_CRIADO_EM].dropna()
-    if datas.empty:
-        return []
-    iso = datas.dt.isocalendar()
-    combos = sorted(set(zip(iso["year"].tolist(), iso["week"].tolist())))
-    return [_week_label(year, week) for year, week in combos]
-
-
-def filter_by_semanas(df: pd.DataFrame, semanas: list[str]) -> pd.DataFrame:
-    """Filtra pelas semanas (rótulo ISO) selecionadas. Lista vazia = nenhum resultado."""
-    if not semanas:
-        return df.iloc[0:0]
-    return df[_week_label_column(df).isin(semanas)]
 
 
 def apply_all_filters(
@@ -92,13 +54,10 @@ def apply_all_filters(
     start: date | None,
     end: date | None,
     numero_chamado: str,
-    oficinas: list[str] | None,
-    semanas: list[str] | None = None,
+    oficinas: list[str],
 ) -> pd.DataFrame:
     """Aplica todos os filtros em sequência."""
     out = filter_by_date_range(df, start, end)
     out = filter_by_numero_chamado(out, numero_chamado)
     out = filter_by_oficinas(out, oficinas)
-    if semanas is not None:
-        out = filter_by_semanas(out, semanas)
     return out

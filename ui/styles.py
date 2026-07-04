@@ -18,68 +18,6 @@ def get_custom_css() -> str:
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=Inter:wght@400;500;600&display=swap');
 
-/* =========================================================================
-   LOCK DE TEMA LIGHT — necessário no deploy do Streamlit Community Cloud.
-   Mesmo com [theme] base="light" no config.toml, alguns containers nativos
-   (sidebar, header, popover, blocos, iframe) ainda seguem a preferência de
-   cor do sistema operacional/navegador (prefers-color-scheme: dark) do
-   usuário, gerando faixas escuras. Forçamos color-scheme:light e o fundo
-   de cada container nativo com !important para sobrepor esse
-   comportamento em qualquer ambiente de deploy.
-   ========================================================================= */
-html {{
-    color-scheme: light !important;
-}}
-
-.stApp,
-[data-testid="stAppViewContainer"],
-[data-testid="stHeader"],
-[data-testid="stToolbar"],
-[data-testid="stBottomBlockContainer"],
-[data-testid="stMain"],
-[data-testid="stMainBlockContainer"] {{
-    background-color: {p['bg']} !important;
-    color: {p['text']} !important;
-}}
-
-[data-testid="stSidebar"],
-[data-testid="stSidebarContent"] {{
-    background-color: {p['surface']} !important;
-    color: {p['text']} !important;
-}}
-
-[data-testid="stSidebar"] * {{
-    color: {p['text']} !important;
-}}
-
-[data-testid="stPopoverBody"],
-div[data-baseweb="popover"],
-div[data-baseweb="popover"] div {{
-    background-color: {p['surface']} !important;
-    color: {p['text']} !important;
-}}
-
-[data-testid="stExpander"],
-[data-testid="stVerticalBlock"],
-[data-testid="stHorizontalBlock"] {{
-    background-color: transparent !important;
-}}
-
-/* iframe usado pelos gráficos ECharts — garante fundo claro por trás do SVG */
-iframe {{
-    background-color: transparent !important;
-    color-scheme: light !important;
-}}
-
-/* Inputs nativos (text_input, date_input, multiselect, selectbox) */
-input, textarea, select,
-[data-baseweb="input"],
-[data-baseweb="select"],
-[data-baseweb="datepicker"] {{
-    background-color: {p['surface']} !important;
-    color: {p['text']} !important;
-}}
-
 html, body, [class*="css"] {{
     font-family: 'Inter', sans-serif;
 }}
@@ -259,14 +197,14 @@ table.ppc-table thead th {{
     position: sticky;
     top: 0;
     z-index: 1;
-    background: linear-gradient(180deg, {p['table_header']} 0%, {p['table_header_dark']} 100%);
+    background: linear-gradient(135deg, {p['neon']} 0%, {p['neon_soft']} 100%);
     color: #FFFFFF;
     font-family: 'Sora', sans-serif;
     font-weight: 600;
     font-size: 11.5px;
     letter-spacing: .03em;
     text-transform: uppercase;
-    text-align: left;
+    text-align: center;
     padding: 9px 10px;
     white-space: nowrap;
     overflow: hidden;
@@ -274,22 +212,6 @@ table.ppc-table thead th {{
 }}
 table.ppc-table thead th:first-child {{ border-top-left-radius: 12px; }}
 table.ppc-table thead th:last-child {{ border-top-right-radius: 12px; }}
-
-.ppc-th-inner {{
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 6px;
-}}
-.ppc-sort-icon {{
-    display: inline-flex;
-    flex-direction: column;
-    line-height: .55;
-    font-size: 8px;
-    letter-spacing: 0;
-    color: rgba(255, 255, 255, .65);
-    flex-shrink: 0;
-}}
 
 table.ppc-table tbody td {{
     padding: 7px 10px;
@@ -302,7 +224,7 @@ table.ppc-table tbody td {{
 }}
 
 table.ppc-table tbody tr:nth-child(even) {{
-    background: {p['table_stripe']};
+    background: {p['surface_alt']};
 }}
 table.ppc-table tbody tr:nth-child(odd) {{
     background: {p['surface']};
@@ -317,15 +239,6 @@ table.ppc-table tbody tr:last-child td {{
 td.ppc-align-left {{ text-align: left; }}
 td.ppc-align-right {{ text-align: right; }}
 td.ppc-align-center {{ text-align: center; }}
-
-.ppc-pill {{
-    display: inline-block;
-    background: {p['table_pill_bg']};
-    color: {p['table_pill_text']};
-    font-weight: 600;
-    border-radius: 999px;
-    padding: 2px 12px;
-}}
 
 /* ---------- Popover de filtros ---------- */
 div[data-testid="stPopover"] button {{
