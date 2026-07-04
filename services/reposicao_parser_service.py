@@ -51,6 +51,27 @@ _VAZIO = "Não informado"
 
 _RE_NUMERO = re.compile(r"^(\d+)-")
 
+# Sufixos de razão social que marcam o fim do nome real da oficina. Usados
+# como rede de segurança: em algumas linhas o texto de "Parte da peça" no
+# "Nome da tarefa" não bate 100% com o valor rotulado em Notas (ex.: uma
+# descrição mais longa em vez do nome curto da peça), então a eliminação
+# abaixo não consegue remover esse pedaço e ele fica grudado na oficina
+# (ex.: "DANTAS E PAULINO CONFECCOES LTDA-Linha aguardando retorno do
+# código da"). Cortando tudo depois da ÚLTIMA ocorrência de um sufixo
+# empresarial reconhecido, recuperamos só o nome da empresa nesses casos
+# sem arriscar truncar nomes legítimos como "ASA CONFECCOES LTDA - ME"
+# (o "ME" final também é reconhecido, então nada é cortado ali). Oficinas
+# sem nenhum desses sufixos (ex.: "INDUSTRIALIZACAO EXTERNA") não são
+# afetadas.
+_RE_SUFIXO_EMPRESARIAL = re.compile(r"\b(?:LTDA|EIRELI|EPP|MEI|S/A|S\.A\.?|ME)\b", re.IGNORECASE)
+
+
+def _truncar_apos_sufixo_empresarial(oficina: str) -> str:
+    matches = list(_RE_SUFIXO_EMPRESARIAL.finditer(oficina))
+    if not matches:
+        return oficina
+    return oficina[: matches[-1].end()].strip()
+
 
 def _extract_label(text: str, label: str) -> str | None:
     """Extrai o valor de um campo rotulado dentro de Notas (ex.: 'Motivo:
@@ -87,6 +108,7 @@ def parse_reposicao_row(nome_tarefa: str, notas: str) -> dict[str, str | None]:
     if parte:
         oficina = re.sub(re.escape(parte) + r"\s*$", "", oficina, flags=re.IGNORECASE)
     oficina = oficina.strip(" -\t\n")
+    oficina = _truncar_apos_sufixo_empresarial(oficina)
 
     # Guarda-chuva para os ~0,1% de linhas onde a eliminação não deixa um
     # nome de oficina plausível (texto vazio ou só dígitos residuais).

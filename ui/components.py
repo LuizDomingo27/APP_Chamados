@@ -13,7 +13,7 @@ from html import escape
 import pandas as pd
 import streamlit as st
 
-from core.config import PALETTE, STATUS_COLORS, PRIORIDADE_COLORS
+from core.config import COL_OFICINA, PALETTE, PRIORIDADE_COLORS, STATUS_COLORS
 from core.utils import format_date_br, format_int
 
 
@@ -122,20 +122,35 @@ def render_styled_dataframe(df: pd.DataFrame, date_columns: list[str] | None = N
         if col in display_df.columns:
             display_df[col] = display_df[col].apply(format_date_br)
 
-    # Colunas curtas/categóricas ficam centralizadas; texto fica à esquerda;
-    # números ficam à direita.
-    centered_cols = {"Status", "Prioridade"}
-
+    # Todas as colunas ficam centralizadas — só "Oficina" (nome da empresa,
+    # texto mais longo e o principal ponto de leitura da tabela) fica à
+    # esquerda.
     def _align_for(col: str) -> str:
-        if col in centered_cols:
-            return "ppc-align-center"
-        if pd.api.types.is_numeric_dtype(df[col]):
-            return "ppc-align-right"
-        return "ppc-align-left"
+        if col == COL_OFICINA:
+            return "ppc-align-left"
+        return "ppc-align-center"
 
     alignments = {col: _align_for(col) for col in display_df.columns}
 
-    header_html = "".join(f"<th>{escape(str(col))}</th>" for col in display_df.columns)
+    # Colunas numéricas com mais de um valor distinto ganham um destaque em
+    # "pílula" nas linhas acima da mediana da própria coluna — mesmo efeito
+    # visual do exemplo de referência (valores que se destacam ficam com um
+    # selo verde), só que calculado por coluna em vez de um limiar fixo, já
+    # que cada tabela do app tem colunas numéricas com unidades diferentes
+    # (dias, contagens, %).
+    badge_cols = {
+        col
+        for col in display_df.columns
+        if col not in date_columns
+        and pd.api.types.is_numeric_dtype(df[col])
+        and df[col].nunique(dropna=True) > 1
+    }
+    medians = {col: df[col].median() for col in badge_cols}
+
+    header_html = "".join(
+        f'<th><span class="ppc-th-icon">◆</span>{escape(str(col))}</th>'
+        for col in display_df.columns
+    )
 
     rows_html = []
     for _, row in display_df.iterrows():
@@ -143,8 +158,11 @@ def render_styled_dataframe(df: pd.DataFrame, date_columns: list[str] | None = N
         for col in display_df.columns:
             raw = row[col]
             text = escape(str(raw)) if pd.notna(raw) else "—"
+            cell_content = text
+            if col in badge_cols and pd.notna(raw) and raw > medians[col]:
+                cell_content = f'<span class="ppc-pill">{text}</span>'
             cells.append(
-                f'<td class="{alignments[col]}" title="{text}">{text}</td>'
+                f'<td class="{alignments[col]}" title="{text}">{cell_content}</td>'
             )
         rows_html.append(f"<tr>{''.join(cells)}</tr>")
 

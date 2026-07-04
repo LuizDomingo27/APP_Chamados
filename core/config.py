@@ -83,6 +83,10 @@ PALETTE = {
     "warning": "#FFB020",
     "info": "#3B82F6",
     "success": "#0FBF9F",
+    "table_header_start": "#146C43",
+    "table_header_end": "#1E8F5E",
+    "table_badge_bg": "#D9F2E3",
+    "table_badge_text": "#146C43",
 }
 
 # Cores fixas por status/prioridade — usadas nos cards e gráficos para

@@ -47,7 +47,7 @@ from services.kpi_service import (
     total_chamados,
     total_pendentes,
 )
-from services.reposicao_filter_service import apply_all_filters_reposicao
+from services.reposicao_filter_service import apply_all_filters_reposicao, semana_options
 from services.reposicao_kpi_service import (
     calcular_destaques_reposicao,
     enrich_com_indicadores_temporais,
@@ -128,8 +128,12 @@ def _render_sidebar_filters(df):
     start, end = (date_range if isinstance(date_range, tuple) and len(date_range) == 2
                   else (min_date.date(), max_date.date()))
 
-    numero_reposicao = st.sidebar.text_input(
-        "Número da reposição", placeholder="Ex: 26", key="rep_numero"
+    semanas_disponiveis = semana_options(df)
+    semanas_selecionadas = st.sidebar.multiselect(
+        "🗓️ Semana(s)",
+        options=semanas_disponiveis,
+        default=semanas_disponiveis,
+        key="rep_semanas",
     )
 
     oficinas_disponiveis = safe_unique_sorted(df[COL_OFICINA])
@@ -147,12 +151,12 @@ def _render_sidebar_filters(df):
         st.cache_data.clear()
         st.rerun()
 
-    return start, end, numero_reposicao, oficinas_selecionadas
+    return start, end, semanas_selecionadas, oficinas_selecionadas
 
 
 def _render_dashboard(df) -> None:
-    start, end, numero_reposicao, oficinas = _render_sidebar_filters(df)
-    filtrado = apply_all_filters_reposicao(df, start, end, numero_reposicao, oficinas)
+    start, end, semanas, oficinas = _render_sidebar_filters(df)
+    filtrado = apply_all_filters_reposicao(df, start, end, semanas, oficinas)
 
     render_header(
         title="Central de Acompanhamento de Reposições",

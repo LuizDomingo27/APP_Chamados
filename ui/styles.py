@@ -198,7 +198,7 @@ table.ppc-table thead th {{
     position: sticky;
     top: 0;
     z-index: 1;
-    background: linear-gradient(135deg, {p['neon']} 0%, {p['neon_soft']} 100%);
+    background: linear-gradient(135deg, {p['table_header_start']} 0%, {p['table_header_end']} 100%);
     color: #FFFFFF;
     font-family: 'Sora', sans-serif;
     font-weight: 600;
@@ -211,6 +211,23 @@ table.ppc-table thead th {{
 }}
 table.ppc-table thead th:first-child {{ border-top-left-radius: 12px; }}
 table.ppc-table thead th:last-child {{ border-top-right-radius: 12px; }}
+
+.ppc-th-icon {{
+    color: rgba(255, 255, 255, 0.75);
+    font-size: 8px;
+    margin-right: 6px;
+    vertical-align: middle;
+}}
+
+/* ---------- Badge de valor em destaque ---------- */
+.ppc-pill {{
+    display: inline-block;
+    background: {p['table_badge_bg']};
+    color: {p['table_badge_text']};
+    font-weight: 700;
+    padding: 2px 11px;
+    border-radius: 999px;
+}}
 
 table.ppc-table tbody td {{
     padding: 7px 14px;
