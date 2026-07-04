@@ -65,26 +65,30 @@ PRIORIDADE_RANK = {
 DATE_FORMAT_BR = "%d/%m/%Y"
 
 # ---------------------------------------------------------------------------
-# Paleta — tema light moderno, cards verde-ciano neon
+# Paleta — tema dark moderno (fundo navy profundo, acentos teal + roxo),
+# inspirado no dashboard de referência: superfícies escuras, verde-ciano
+# neon como cor primária e roxo como acento secundário.
 # ---------------------------------------------------------------------------
 PALETTE = {
-    "bg": "#F5F8F8",
-    "surface": "#FFFFFF",
-    "surface_alt": "#EFFBF8",
-    "text": "#10241F",
-    "text_muted": "#5B6C68",
-    "border": "#E2EEEC",
-    "neon": "#0FBF9F",
-    "neon_soft": "#2EE6C0",
-    "neon_glow": "rgba(15, 191, 159, 0.25)",
+    "bg": "#0E1420",
+    "surface": "#171F30",
+    "surface_alt": "#1E2740",
+    "text": "#EAF0F7",
+    "text_muted": "#8A97AD",
+    "border": "#2A3450",
+    "neon": "#2DD4BF",
+    "neon_soft": "#5EEAD4",
+    "neon_glow": "rgba(45, 212, 191, 0.30)",
+    "purple": "#8B5CF6",
+    "purple_soft": "#A78BFA",
     "danger": "#FF6B6B",
-    "warning": "#FFB020",
+    "warning": "#FBBF24",
     "info": "#3B82F6",
-    "success": "#0FBF9F",
-    "table_header_start": "#146C43",
-    "table_header_end": "#1E8F5E",
-    "table_badge_bg": "#D9F2E3",
-    "table_badge_text": "#146C43",
+    "success": "#2DD4BF",
+    "table_header_start": "#0F8A73",
+    "table_header_end": "#149E86",
+    "table_badge_bg": "#123A34",
+    "table_badge_text": "#5EEAD4",
 }
 
 # Cores fixas por status/prioridade — usadas nos cards e gráficos para

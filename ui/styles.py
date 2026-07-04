@@ -1,10 +1,10 @@
 """
 ui/styles.py
 
-CSS do tema light moderno. Cards com borda/glow verde-ciano neon sobre
-fundo claro, tipografia Sora (headings/KPI) + Inter (corpo), cantos
-arredondados suaves. Centraliza toda a estética para não espalhar CSS
-inline pelas telas.
+CSS do tema dark moderno. Cards com borda/glow verde-ciano neon sobre
+fundo navy profundo, tipografia Sora (headings/KPI) + Inter (corpo),
+cantos arredondados suaves. Centraliza toda a estética para não espalhar
+CSS inline pelas telas.
 """
 
 from __future__ import annotations
@@ -74,7 +74,7 @@ h1, h2, h3, h4, .kpi-value {{
     border: 1px solid {p['neon_soft']}55;
     border-radius: 18px;
     padding: 18px 20px;
-    box-shadow: 0 1px 10px rgba(16, 36, 31, 0.05);
+    box-shadow: 0 2px 14px rgba(0, 0, 0, 0.35);
     transition: box-shadow .2s ease, transform .2s ease;
     height: 100%;
 }}
@@ -176,7 +176,7 @@ h1, h2, h3, h4, .kpi-value {{
     border: 1px solid {p['border']};
     border-radius: 16px;
     padding: 4px;
-    box-shadow: 0 1px 10px rgba(16, 36, 31, 0.05);
+    box-shadow: 0 2px 14px rgba(0, 0, 0, 0.35);
 }}
 
 .ppc-table-scroll {{
