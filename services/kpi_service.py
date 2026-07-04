@@ -129,6 +129,40 @@ def tendencia_diaria(df: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
+def tendencia_semanal(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Total de itens criados por semana (semana fechando no domingo).
+    Formato de saída (['Semana', 'Total de Chamados']) é proposital:
+    reaproveita build_categoria_bar_option (ui/charts.py) sem precisar de
+    código de gráfico novo. O rótulo é o número ISO da semana (ex.:
+    "Sem. 24"), que é como o usuário se refere à semana.
+    """
+    serie = df[COL_CRIADO_EM].dropna()
+    if serie.empty:
+        return pd.DataFrame(columns=["Semana", "Total de Chamados"])
+
+    inicio_semana = serie.dt.to_period("W-SUN").dt.start_time
+    contagem = inicio_semana.value_counts().sort_index()
+    out = contagem.reset_index()
+    out.columns = ["_inicio_semana", "Total de Chamados"]
+    out["Semana"] = "Sem. " + out["_inicio_semana"].dt.isocalendar().week.astype(str)
+    return out[["Semana", "Total de Chamados"]]
+
+
+def tendencia_mensal(df: pd.DataFrame) -> pd.DataFrame:
+    """Total de itens criados por mês (rótulo 'MM/AAAA')."""
+    serie = df[COL_CRIADO_EM].dropna()
+    if serie.empty:
+        return pd.DataFrame(columns=["Mês", "Total de Chamados"])
+
+    inicio_mes = serie.dt.to_period("M").dt.start_time
+    contagem = inicio_mes.value_counts().sort_index()
+    out = contagem.reset_index()
+    out.columns = ["_inicio_mes", "Total de Chamados"]
+    out["Mês"] = out["_inicio_mes"].dt.strftime("%m/%Y")
+    return out[["Mês", "Total de Chamados"]]
+
+
 # ---------------------------------------------------------------------------
 # Cards de destaque
 # ---------------------------------------------------------------------------

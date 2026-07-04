@@ -38,7 +38,17 @@ from core.config import (
     STATUS_EM_ANDAMENTO,
     STATUS_NAO_INICIADO,
 )
-from services.kpi_service import Destaques
+from services.kpi_service import (
+    Destaques,
+    tendencia_mensal,
+    tendencia_semanal,
+)
+
+# tendencia_semanal / tendencia_mensal são genéricas (dependem só de
+# COL_CRIADO_EM) e agora moram em kpi_service, para serem compartilhadas
+# com a página de Chamados. Reexportadas aqui para não quebrar quem já
+# importa de services.reposicao_kpi_service (ex.: pages/reposicoes.py).
+__all__ = ["tendencia_mensal", "tendencia_semanal"]
 
 
 # ---------------------------------------------------------------------------
@@ -80,44 +90,6 @@ def calcular_destaques_reposicao(df: pd.DataFrame) -> Destaques:
         solicitacao_top_nome=categoria_top_nome,
         solicitacao_top_qtd=categoria_top_qtd,
     )
-
-
-# ---------------------------------------------------------------------------
-# Tendências semanal / mensal
-# ---------------------------------------------------------------------------
-def tendencia_semanal(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Total de reposições solicitadas por semana (semana fechando no
-    domingo). Formato de saída (['Semana', 'Total de Chamados']) é
-    proposital: reaproveita build_categoria_bar_option (ui/charts.py)
-    sem precisar de nenhum código de gráfico novo.
-    """
-    serie = df[COL_CRIADO_EM].dropna()
-    if serie.empty:
-        return pd.DataFrame(columns=["Semana", "Total de Chamados"])
-
-    inicio_semana = serie.dt.to_period("W-SUN").dt.start_time
-    contagem = inicio_semana.value_counts().sort_index()
-    out = contagem.reset_index()
-    out.columns = ["_inicio_semana", "Total de Chamados"]
-    # Rótulo = número ISO da semana (ex.: "Sem. 24"), não a data de início —
-    # é o identificador que o usuário usa para se referir à semana.
-    out["Semana"] = "Sem. " + out["_inicio_semana"].dt.isocalendar().week.astype(str)
-    return out[["Semana", "Total de Chamados"]]
-
-
-def tendencia_mensal(df: pd.DataFrame) -> pd.DataFrame:
-    """Total de reposições solicitadas por mês."""
-    serie = df[COL_CRIADO_EM].dropna()
-    if serie.empty:
-        return pd.DataFrame(columns=["Mês", "Total de Chamados"])
-
-    inicio_mes = serie.dt.to_period("M").dt.start_time
-    contagem = inicio_mes.value_counts().sort_index()
-    out = contagem.reset_index()
-    out.columns = ["_inicio_mes", "Total de Chamados"]
-    out["Mês"] = out["_inicio_mes"].dt.strftime("%m/%Y")
-    return out[["Mês", "Total de Chamados"]]
 
 
 # ---------------------------------------------------------------------------

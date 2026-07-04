@@ -42,6 +42,8 @@ from services.kpi_service import (
     ranking_oficinas,
     tabela_ordenada_por_prioridade,
     tendencia_diaria,
+    tendencia_mensal,
+    tendencia_semanal,
     total_chamados,
 )
 from services.parser_service import enrich_with_parsed_fields
@@ -187,24 +189,27 @@ def _render_dashboard(df) -> None:
             f"{destaques.solicitacao_top_qtd} chamado(s)",
         )
 
-    # ---------------- Gráficos ----------------
-    render_section_title("Tendência de Chamados (com média do período)")
-    trend_df = tendencia_diaria(filtrado)
-    if not trend_df.empty:
-        render_echarts(build_trend_line_option(trend_df), height=360)
+    # ---------------- Tendência (dia / semana / mês) ----------------
+    render_section_title("Tendência de Chamados")
+    tab_dia, tab_semana, tab_mes = st.tabs(["Por Dia", "Por Semana", "Por Mês"])
+    with tab_dia:
+        trend_df = tendencia_diaria(filtrado)
+        if not trend_df.empty:
+            render_echarts(build_trend_line_option(trend_df), height=360)
+    with tab_semana:
+        semana_df = tendencia_semanal(filtrado)
+        if not semana_df.empty:
+            render_echarts(build_categoria_bar_option(semana_df, sort_ascending=False, show_trend=True), height=360)
+    with tab_mes:
+        mes_df = tendencia_mensal(filtrado)
+        if not mes_df.empty:
+            render_echarts(build_categoria_bar_option(mes_df, sort_ascending=False, show_trend=True), height=360)
 
-    col_rank, col_cat = st.columns([1.2, 1])
-    with col_rank:
-        render_section_title(f"Ranking de Oficinas (Top {TOP_N_OFICINAS})")
-        rank_df = ranking_oficinas(filtrado, TOP_N_OFICINAS)
-        if not rank_df.empty:
-            render_echarts(build_oficina_ranking_option(rank_df), height=380)
-
-    with col_cat:
-        render_section_title("Chamados por Categoria")
-        cat_df = agregado_por_categoria(filtrado)
-        if not cat_df.empty:
-            render_echarts(build_categoria_bar_option(cat_df), height=380)
+    # ---------------- Ranking de Oficinas ----------------
+    render_section_title(f"Ranking de Oficinas (Top {TOP_N_OFICINAS})")
+    rank_df = ranking_oficinas(filtrado, TOP_N_OFICINAS)
+    if not rank_df.empty:
+        render_echarts(build_oficina_ranking_option(rank_df), height=380)
 
     # ---------------- Agregados em tabela ----------------
     render_section_title("Totais Agregados")
