@@ -107,17 +107,6 @@ def render_multiselect_all(label: str, options: list[str], state_key: str) -> li
         st.session_state[widget_key] = [o for o in st.session_state[widget_key] if o in options]
 
     st.sidebar.markdown(f"**{label}**")
-
-    #col_a, col_b = st.sidebar.columns(2)
-    #with col_a:
-    #    if st.button("Selecionar todas", key=f"{state_key}_all", width="stretch"):
-    #        st.session_state[widget_key] = list(options)
-    #        st.rerun()
-    #with col_b:
-    #    if st.button("Limpar", key=f"{state_key}_clear", width="stretch"):
-    #        st.session_state[widget_key] = []
-    #        st.rerun()
-
     st.sidebar.multiselect(
         label,
         options,
@@ -125,8 +114,8 @@ def render_multiselect_all(label: str, options: list[str], state_key: str) -> li
         max_selections=len(options),
         accept_new_options=True,
     )
-
     return st.session_state[widget_key]
+
 
 
 def render_destaque_card(tag: str, value: str, subvalue: str) -> None:
