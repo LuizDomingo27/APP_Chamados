@@ -245,24 +245,75 @@ def build_categoria_bar_option(
         }
     ]
 
+    y_axis: list[dict] = [
+        {
+            "type": "value",
+            "splitLine": {"show": False},
+            "axisLine": {"show": False},
+            "axisTick": {"show": False},
+            "axisLabel": {"show": False},
+        }
+    ]
+
     if show_trend:
+        # A linha não repete o valor absoluto da coluna (isso só duplicava o
+        # rótulo do total) — em vez disso plota a variação percentual em
+        # relação ao período anterior, num eixo secundário próprio, já que a
+        # escala de "%" não tem relação com a escala de contagem das barras.
+        pct_points: list[dict] = []
+        for i, valor in enumerate(valores):
+            anterior = valores[i - 1] if i > 0 else None
+            if not anterior:
+                pct_points.append({"value": None})
+                continue
+            variacao = round((valor - anterior) / anterior * 100, 1)
+            cor = PALETTE["success"] if variacao >= 0 else PALETTE["danger"]
+            texto = f"{variacao:+.1f}%" if variacao != 0 else "0%"
+            pct_points.append(
+                {
+                    "value": variacao,
+                    "itemStyle": {"color": cor},
+                    "label": {
+                        "show": True,
+                        "position": "top",
+                        "formatter": texto,
+                        "color": cor,
+                        "fontFamily": _CHART_FONT,
+                        "fontSize": 11,
+                        "fontWeight": 700,
+                    },
+                }
+            )
+
         series.append(
             {
-                "name": "Variação",
+                "name": "Variação (%)",
                 "type": "line",
-                "data": valores,
+                "yAxisIndex": 1,
+                "data": pct_points,
                 "smooth": True,
                 "symbol": "circle",
                 "symbolSize": 7,
                 "z": 3,
-                "lineStyle": {"color": PALETTE["warning"], "width": 2.5},
-                "itemStyle": {"color": PALETTE["warning"], "borderColor": "#FFFFFF", "borderWidth": 1.5},
+                "connectNulls": True,
+                "tooltip": {"show": False},
+                "lineStyle": {"color": PALETTE["text_muted"], "width": 2, "type": "dashed"},
+                "itemStyle": {"borderColor": "#FFFFFF", "borderWidth": 1.5},
+            }
+        )
+        y_axis.append(
+            {
+                "type": "value",
+                "splitLine": {"show": False},
+                "axisLine": {"show": False},
+                "axisTick": {"show": False},
+                "axisLabel": {"show": False},
             }
         )
 
     return {
         "tooltip": {**_TOOLTIP_BASE, "trigger": "axis", "axisPointer": {"type": "shadow"}},
-        "grid": {"left": 20, "right": 20, "top": 20, "bottom": 70, "containLabel": True},
+        "grid": {"left": 20, "right": 20, "top": 36, "bottom": 70, "containLabel": True},
         "xAxis": {
             "type": "category",
             "data": nomes,
@@ -276,12 +327,6 @@ def build_categoria_bar_option(
             "axisTick": {"show": False},
             "splitLine": {"show": False},
         },
-        "yAxis": {
-            "type": "value",
-            "splitLine": {"show": False},
-            "axisLine": {"show": False},
-            "axisTick": {"show": False},
-            "axisLabel": {"show": False},
-        },
+        "yAxis": y_axis,
         "series": series,
     }
