@@ -122,7 +122,7 @@ def render_multiselect_all(label: str, options: list[str], state_key: str) -> li
         label,
         options=options,
         key=widget_key,
-        label_visibility="collapsed",
+        label_visibility="hidden",
     )
 
     return st.session_state[widget_key]
