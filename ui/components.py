@@ -108,11 +108,12 @@ def render_multiselect_all(label: str, options: list[str], state_key: str) -> li
 
     st.sidebar.markdown(f"**{label}**")
     st.sidebar.multiselect(
-        label,
-        options,
+        label=label,
+        options=options,
         key=widget_key,
-        max_selections=len(options),
+        label_visibility="collapsed",
         accept_new_options=True,
+        
     )
     return st.session_state[widget_key]
 
