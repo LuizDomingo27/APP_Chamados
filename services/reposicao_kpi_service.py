@@ -100,7 +100,9 @@ def tendencia_semanal(df: pd.DataFrame) -> pd.DataFrame:
     contagem = inicio_semana.value_counts().sort_index()
     out = contagem.reset_index()
     out.columns = ["_inicio_semana", "Total de Chamados"]
-    out["Semana"] = "Sem. " + out["_inicio_semana"].dt.strftime("%d/%m")
+    # Rótulo = número ISO da semana (ex.: "Sem. 24"), não a data de início —
+    # é o identificador que o usuário usa para se referir à semana.
+    out["Semana"] = "Sem. " + out["_inicio_semana"].dt.isocalendar().week.astype(str)
     return out[["Semana", "Total de Chamados"]]
 
 

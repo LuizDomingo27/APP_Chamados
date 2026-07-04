@@ -267,7 +267,10 @@ def build_categoria_bar_option(
                 pct_points.append({"value": None})
                 continue
             variacao = round((valor - anterior) / anterior * 100, 1)
-            cor = PALETTE["success"] if variacao >= 0 else PALETTE["danger"]
+            # Verde do cabeçalho das tabelas (tom escuro) para variação positiva:
+            # branco sobre esse verde tem contraste bem melhor que o neon claro.
+            # Queda continua em vermelho para manter o sinal de alerta.
+            cor = PALETTE["table_header_start"] if variacao >= 0 else PALETTE["danger"]
             texto = f"{variacao:+.1f}%" if variacao != 0 else "0%"
             pct_points.append(
                 {
