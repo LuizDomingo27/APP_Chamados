@@ -13,7 +13,7 @@ from html import escape
 import pandas as pd
 import streamlit as st
 
-from core.config import COL_OFICINA, PALETTE, PRIORIDADE_COLORS, STATUS_COLORS
+from core.config import COL_OFICINA, PALETTE, STATUS_COLORS
 from core.utils import format_date_br, format_int
 
 
@@ -77,17 +77,60 @@ def render_status_kpis(status_counts: dict[str, int]) -> None:
             )
 
 
-def render_priority_kpis(priority_counts: dict[str, int]) -> None:
-    subtitles = {"Urgente": "alta severidade", "Importante": "atenção necessária", "Média": "fluxo normal"}
-    cols = st.columns(len(priority_counts))
-    for col, (prioridade, qtd) in zip(cols, priority_counts.items()):
-        with col:
-            render_kpi_card(
-                label=f"Prioridade {prioridade}",
-                value=qtd,
-                subtitle=subtitles.get(prioridade, ""),
-                accent=PRIORIDADE_COLORS.get(prioridade),
-            )
+def render_multiselect_all(label: str, options: list[str], state_key: str) -> list[str]:
+    """Filtro multiselect no sidebar, dentro de um popover: o botão mostra um
+    resumo compacto ("Todas (12)" / "3 (12)") em vez de listar cada item
+    escolhido como tag, e traz atalhos "Selecionar todas" / "Limpar".
+
+    Lista vazia é uma seleção válida (o usuário limpou tudo) e é tratada
+    pelos filtros como "sem filtro aplicado" — ver
+    services/filter_service.py — nunca resulta em tela vazia.
+
+    O multiselect é um widget controlado só pela sua própria `key`
+    (nenhum `default=` é passado): uma vez que uma key já foi montada, o
+    Streamlit ignora qualquer `default` em reruns seguintes e mantém o
+    valor anterior — então "Selecionar todas"/"Limpar" precisam escrever
+    diretamente em session_state[widget_key] para realmente colar.
+    """
+    widget_key = f"{state_key}_multiselect"
+
+    if widget_key not in st.session_state:
+        st.session_state[widget_key] = list(options)
+    else:
+        # Opções podem mudar (ex.: novo arquivo carregado) — descarta
+        # valores que não existem mais, senão o widget lança erro ao
+        # validar o valor atual contra a nova lista de opções.
+        st.session_state[widget_key] = [o for o in st.session_state[widget_key] if o in options]
+
+    selecionados = st.session_state[widget_key]
+
+    if not options:
+        resumo = "Nenhuma"
+    elif set(selecionados) == set(options):
+        resumo = "Todas"
+    elif not selecionados:
+        resumo = "Nenhuma"
+    else:
+        resumo = str(len(selecionados))
+
+    with st.sidebar.popover(f"{label}: {resumo} ({len(options)})", use_container_width=True):
+        col_a, col_b = st.columns(2)
+        with col_a:
+            if st.button("Selecionar todas", key=f"{state_key}_all", width="stretch"):
+                st.session_state[widget_key] = list(options)
+                st.rerun()
+        with col_b:
+            if st.button("Limpar", key=f"{state_key}_clear", width="stretch"):
+                st.session_state[widget_key] = []
+                st.rerun()
+        st.multiselect(
+            "Buscar",
+            options=options,
+            key=widget_key,
+            label_visibility="collapsed",
+        )
+
+    return st.session_state[widget_key]
 
 
 def render_destaque_card(tag: str, value: str, subvalue: str) -> None:

@@ -5,9 +5,8 @@ KPIs específicos do módulo de Reposições. As contas que já são
 genéricas o suficiente (dependem só dos nomes de coluna de core.config,
 sem nada "de chamado" embutido) são reaproveitadas direto de
 services.kpi_service: total_chamados, contagem_por_status,
-contagem_por_prioridade, agregado_por_oficina, agregado_por_categoria,
-ranking_oficinas, tendencia_diaria, tabela_ordenada_por_prioridade e
-total_pendentes.
+agregado_por_oficina, agregado_por_categoria, ranking_oficinas,
+tendencia_diaria, tabela_ordenada_por_prioridade e total_pendentes.
 
 Este módulo cobre o que é específico de Reposições:
 - tendência semanal/mensal (o pedido cobre dia/semana/mês, o serviço

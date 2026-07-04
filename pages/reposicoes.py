@@ -68,6 +68,7 @@ from ui.components import (
     render_destaque_card,
     render_header,
     render_kpi_card,
+    render_multiselect_all,
     render_section_title,
     render_status_kpis,
     render_styled_dataframe,
@@ -129,19 +130,13 @@ def _render_sidebar_filters(df):
                   else (min_date.date(), max_date.date()))
 
     semanas_disponiveis = semana_options(df)
-    semanas_selecionadas = st.sidebar.multiselect(
-        "🗓️ Semana(s)",
-        options=semanas_disponiveis,
-        default=semanas_disponiveis,
-        key="rep_semanas",
+    semanas_selecionadas = render_multiselect_all(
+        "🗓️ Semana(s)", semanas_disponiveis, "_select_all_semanas_filter_rep"
     )
 
     oficinas_disponiveis = safe_unique_sorted(df[COL_OFICINA])
-    oficinas_selecionadas = st.sidebar.multiselect(
-        "🏭 Oficina(s)",
-        options=oficinas_disponiveis,
-        default=oficinas_disponiveis,
-        key="oficinas_select_rep",
+    oficinas_selecionadas = render_multiselect_all(
+        "🏭 Oficina(s)", oficinas_disponiveis, "_select_all_oficinas_filter_rep"
     )
 
     st.sidebar.divider()

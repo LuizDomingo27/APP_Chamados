@@ -33,12 +33,11 @@ from core.config import (
 from core.utils import safe_unique_sorted
 from services.data_loader import load_dados_consolidados, validate_workbook
 from services.export_service import build_excel_report
-from services.filter_service import apply_all_filters
+from services.filter_service import apply_all_filters, semana_options
 from services.kpi_service import (
     agregado_por_categoria,
     agregado_por_oficina,
     calcular_destaques,
-    contagem_por_prioridade,
     contagem_por_status,
     ranking_oficinas,
     tabela_ordenada_por_prioridade,
@@ -56,7 +55,7 @@ from ui.components import (
     render_destaque_card,
     render_header,
     render_kpi_card,
-    render_priority_kpis,
+    render_multiselect_all,
     render_section_title,
     render_status_kpis,
     render_styled_dataframe,
@@ -122,36 +121,15 @@ def _render_sidebar_filters(df):
 
     numero_chamado = st.sidebar.text_input("Número do chamado", placeholder="Ex: 25128", key="ppc_numero")
 
+    semanas_disponiveis = semana_options(df)
+    semanas_selecionadas = render_multiselect_all(
+        "🗓️ Semana(s)", semanas_disponiveis, "_select_all_semanas_filter"
+    )
+
     oficinas_disponiveis = safe_unique_sorted(df[COL_OFICINA])
-    state_key = "_select_all_oficinas_filter"
-    if state_key not in st.session_state:
-        st.session_state[state_key] = oficinas_disponiveis
-
-    with st.sidebar.popover(
-        f"🏭 Oficina(s): "
-        f"{'Todas' if len(st.session_state[state_key]) == len(oficinas_disponiveis) else len(st.session_state[state_key])}"
-        f" ({len(oficinas_disponiveis)})",
-        use_container_width=True,
-    ):
-        col_a, col_b = st.columns(2)
-        with col_a:
-            if st.button("Selecionar todas", key="oficinas_all", width="stretch"):
-                st.session_state[state_key] = oficinas_disponiveis
-                st.rerun()
-        with col_b:
-            if st.button("Limpar", key="oficinas_clear", width="stretch"):
-                st.session_state[state_key] = []
-                st.rerun()
-        chosen = st.multiselect(
-            "Buscar oficina",
-            options=oficinas_disponiveis,
-            default=st.session_state[state_key],
-            key="oficinas_multiselect",
-            label_visibility="collapsed",
-        )
-        st.session_state[state_key] = chosen
-
-    oficinas_selecionadas = st.session_state[state_key]
+    oficinas_selecionadas = render_multiselect_all(
+        "🏭 Oficina(s)", oficinas_disponiveis, "_select_all_oficinas_filter"
+    )
 
     st.sidebar.divider()
     if st.sidebar.button("🔄 Carregar outro arquivo", width="stretch", key="ppc_reset"):
@@ -160,12 +138,12 @@ def _render_sidebar_filters(df):
         st.cache_data.clear()
         st.rerun()
 
-    return start, end, numero_chamado, oficinas_selecionadas
+    return start, end, numero_chamado, oficinas_selecionadas, semanas_selecionadas
 
 
 def _render_dashboard(df) -> None:
-    start, end, numero_chamado, oficinas = _render_sidebar_filters(df)
-    filtrado = apply_all_filters(df, start, end, numero_chamado, oficinas)
+    start, end, numero_chamado, oficinas, semanas = _render_sidebar_filters(df)
+    filtrado = apply_all_filters(df, start, end, numero_chamado, oficinas, semanas)
 
     render_header(
         title="Central de Acompanhamento de Chamados",
@@ -185,11 +163,6 @@ def _render_dashboard(df) -> None:
     with col2:
         status_counts = contagem_por_status(filtrado)
         render_status_kpis(status_counts)
-
-    # ---------------- Prioridade ----------------
-    render_section_title("Por Prioridade")
-    priority_counts = contagem_por_prioridade(filtrado)
-    render_priority_kpis(priority_counts)
 
     # ---------------- Destaques ----------------
     render_section_title("Destaques do Período")

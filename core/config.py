@@ -62,8 +62,6 @@ PRIORIDADE_RANK = {
     "Importante": 2,
     "Média": 3,
 }
-PRIORIDADE_ORDER = ["Urgente", "Importante", "Média"]
-
 DATE_FORMAT_BR = "%d/%m/%Y"
 
 # ---------------------------------------------------------------------------
@@ -95,12 +93,6 @@ STATUS_COLORS = {
     STATUS_CONCLUIDA: PALETTE["success"],
     STATUS_NAO_INICIADO: PALETTE["danger"],
     STATUS_EM_ANDAMENTO: PALETTE["warning"],
-}
-
-PRIORIDADE_COLORS = {
-    "Urgente": PALETTE["danger"],
-    "Importante": PALETTE["warning"],
-    "Média": PALETTE["info"],
 }
 
 # Quantidade padrão de itens no ranking de oficinas

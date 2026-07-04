@@ -22,7 +22,6 @@ from core.config import (
     COL_PRIORIDADE,
     COL_SOLICITACAO,
     COL_STATUS,
-    PRIORIDADE_ORDER,
     PRIORIDADE_RANK,
     STATUS_EM_ANDAMENTO,
     STATUS_NAO_INICIADO,
@@ -55,12 +54,6 @@ def contagem_por_status(df: pd.DataFrame) -> dict[str, int]:
     """Devolve contagem por status, sempre incluindo as 3 chaves padrão."""
     counts = df[COL_STATUS].value_counts().to_dict()
     return {status: int(counts.get(status, 0)) for status in STATUS_ORDER}
-
-
-def contagem_por_prioridade(df: pd.DataFrame) -> dict[str, int]:
-    """Devolve contagem por prioridade, sempre incluindo as 3 chaves padrão."""
-    counts = df[COL_PRIORIDADE].value_counts().to_dict()
-    return {p: int(counts.get(p, 0)) for p in PRIORIDADE_ORDER}
 
 
 # ---------------------------------------------------------------------------
