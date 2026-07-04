@@ -106,7 +106,16 @@ def parse_reposicao_row(nome_tarefa: str, notas: str) -> dict[str, str | None]:
     if ordem:
         oficina = oficina.replace(ordem, "")
     if parte:
-        oficina = re.sub(re.escape(parte) + r"\s*$", "", oficina, flags=re.IGNORECASE)
+        # A "Parte da peça" marca o início do trecho descritivo do "Nome da
+        # tarefa" — remove-se ela E tudo que vier depois (até o fim do
+        # texto). Antes o corte era ancorado só no FIM (\s*$), então quando
+        # o nome trazia uma descrição livre mais longa que apenas COMEÇA com
+        # o rótulo curto de Notas (ex.: parte "Etiqueta de preço" vs. texto
+        # "Etiqueta de preço aguardando a impressão da etiqueta de preço"),
+        # o parte não batia no fim e a descrição ficava grudada em oficinas
+        # sem sufixo empresarial (ex.: "F DA SILVA JUNIOR-Etiqueta de preço
+        # aguardando..."). Cortando da parte até o fim, sobra só a oficina.
+        oficina = re.sub(re.escape(parte) + r".*$", "", oficina, flags=re.IGNORECASE | re.DOTALL)
     oficina = oficina.strip(" -\t\n")
     oficina = _truncar_apos_sufixo_empresarial(oficina)
 

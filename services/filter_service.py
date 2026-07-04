@@ -55,12 +55,16 @@ def _semana_inicio(serie: pd.Series) -> pd.Series:
 
 
 def _semana_label(inicio: pd.Timestamp) -> str:
-    fim = inicio + pd.Timedelta(days=6)
-    return f"{inicio.strftime('%d/%m')} a {fim.strftime('%d/%m/%Y')}"
+    # Rótulo pelo número da semana ISO (com o ano, para semanas de anos
+    # diferentes não colidirem, ex.: semana 25 de 2024 vs. de 2025). O ano
+    # ISO é usado em vez do calendário para evitar divergência na virada do
+    # ano (a semana ISO pode pertencer ao ano seguinte/anterior).
+    iso_year, iso_week, _ = inicio.isocalendar()
+    return f"Semana {iso_week:02d}/{iso_year}"
 
 
 def semana_options(df: pd.DataFrame) -> list[str]:
-    """Lista as semanas disponíveis (rótulo 'dd/mm a dd/mm/aaaa'), da mais
+    """Lista as semanas disponíveis (rótulo 'Semana NN/aaaa'), da mais
     recente para a mais antiga — usada para popular o filtro de semana."""
     serie = df[COL_CRIADO_EM].dropna()
     if serie.empty:
@@ -70,7 +74,7 @@ def semana_options(df: pd.DataFrame) -> list[str]:
 
 
 def filter_by_semanas(df: pd.DataFrame, semanas: list[str]) -> pd.DataFrame:
-    """Filtra pelas semanas selecionadas (rótulo 'dd/mm a dd/mm/aaaa').
+    """Filtra pelas semanas selecionadas (rótulo 'Semana NN/aaaa').
     Lista vazia = sem filtro (traz tudo)."""
     if not semanas:
         return df

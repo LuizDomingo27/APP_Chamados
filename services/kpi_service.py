@@ -17,12 +17,15 @@ import pandas as pd
 from core.config import (
     COL_CATEGORIA,
     COL_CRIADO_EM,
+    COL_DATA_CONCLUSAO,
+    COL_DIAS_ABERTO,
     COL_NUM_CHAMADO,
     COL_OFICINA,
     COL_PRIORIDADE,
     COL_SOLICITACAO,
     COL_STATUS,
     PRIORIDADE_RANK,
+    STATUS_CONCLUIDA,
     STATUS_EM_ANDAMENTO,
     STATUS_NAO_INICIADO,
     STATUS_ORDER,
@@ -101,6 +104,30 @@ def tabela_ordenada_por_prioridade(df: pd.DataFrame) -> pd.DataFrame:
     out["_rank_prioridade"] = out[COL_PRIORIDADE].map(PRIORIDADE_RANK).fillna(99)
     out = out.sort_values(["_rank_prioridade", COL_CRIADO_EM], ascending=[True, True])
     return out.drop(columns="_rank_prioridade")
+
+
+def enrich_com_dias_aberto(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Adiciona a coluna 'Dias em Aberto' à fila de prioridade, com todas as
+    linhas preenchidas para o filtro por dias funcionar de forma previsível:
+    - pendentes (Não iniciado / Em andamento): dias desde a criação até hoje;
+    - concluídos: quantos dias o chamado ficou aberto (Data de conclusão -
+      Criado em).
+    Linhas sem data de referência viram <NA> e ficam de fora do filtro.
+    """
+    out = df.copy()
+    agora = pd.Timestamp.now().normalize()
+
+    # Data-fim de referência: hoje para os pendentes, a data de conclusão
+    # para os já concluídos (assim contamos o tempo real que ficaram abertos).
+    fim = pd.Series(agora, index=out.index)
+    if COL_DATA_CONCLUSAO in out.columns:
+        concluido_mask = out[COL_STATUS] == STATUS_CONCLUIDA
+        fim = fim.where(~concluido_mask, out[COL_DATA_CONCLUSAO])
+
+    dias = (fim - out[COL_CRIADO_EM]).dt.days
+    out[COL_DIAS_ABERTO] = dias.clip(lower=0).astype("Int64")
+    return out
 
 
 # ---------------------------------------------------------------------------

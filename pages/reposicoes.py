@@ -52,7 +52,6 @@ from services.reposicao_kpi_service import (
     calcular_destaques_reposicao,
     enrich_com_indicadores_temporais,
     oficinas_com_reposicao_pendente,
-    ranking_solicitantes,
     tempo_atendimento_stats,
     tendencia_mensal,
     tendencia_semanal,
@@ -267,19 +266,11 @@ def _render_dashboard(df) -> None:
         if not mes_df.empty:
             render_echarts(build_categoria_bar_option(mes_df, sort_ascending=False, show_trend=True), height=360)
 
-    # ---------------- Rankings ----------------
-    col_rank, col_solic = st.columns([1.2, 1])
-    with col_rank:
-        render_section_title(f"Ranking de Oficinas (Top {TOP_N_OFICINAS})")
-        rank_df = ranking_oficinas(filtrado, TOP_N_OFICINAS)
-        if not rank_df.empty:
-            render_echarts(build_oficina_ranking_option(rank_df), height=380)
-
-    with col_solic:
-        render_section_title("Quem Mais Solicita")
-        solic_df = ranking_solicitantes(filtrado)
-        if not solic_df.empty:
-            render_styled_dataframe(solic_df, height=380)
+    # ---------------- Ranking de Oficinas ----------------
+    render_section_title(f"Ranking de Oficinas (Top {TOP_N_OFICINAS})")
+    rank_df = ranking_oficinas(filtrado, TOP_N_OFICINAS)
+    if not rank_df.empty:
+        render_echarts(build_oficina_ranking_option(rank_df), height=380)
 
     # ---------------- Agregados em tabela ----------------
     render_section_title("Totais Agregados")

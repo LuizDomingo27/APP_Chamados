@@ -27,6 +27,7 @@ from core.config import (
     COL_CRIADO_EM,
     COL_DATA_CONCLUSAO,
     COL_DATA_INICIO,
+    COL_DIAS_ABERTO,
     COL_OFICINA,
     TOP_N_OFICINAS,
 )
@@ -39,6 +40,7 @@ from services.kpi_service import (
     agregado_por_oficina,
     calcular_destaques,
     contagem_por_status,
+    enrich_com_dias_aberto,
     ranking_oficinas,
     tabela_ordenada_por_prioridade,
     tendencia_diaria,
@@ -238,11 +240,36 @@ def _render_dashboard(df) -> None:
         COL_OFICINA,
         "Status",
         "Prioridade",
+        COL_DIAS_ABERTO,
         COL_CRIADO_EM,
         COL_DATA_CONCLUSAO,
     ]
-    detalhe_cols = [c for c in detalhe_cols if c in filtrado.columns]
-    tabela_prioridade = tabela_ordenada_por_prioridade(filtrado)[detalhe_cols]
+    tabela_fila = enrich_com_dias_aberto(tabela_ordenada_por_prioridade(filtrado))
+    detalhe_cols = [c for c in detalhe_cols if c in tabela_fila.columns]
+    tabela_fila = tabela_fila[detalhe_cols]
+
+    # Filtro local por dias em aberto — afeta SOMENTE esta tabela (não os
+    # KPIs, gráficos ou demais tabelas acima). Slider de faixa com mínimo
+    # de 1 dia: chamados abertos há menos de 1 dia ficam de fora.
+    dias_validos = tabela_fila[COL_DIAS_ABERTO].dropna()
+    max_dias = int(dias_validos.max()) if not dias_validos.empty else 1
+    if max_dias > 1:
+        faixa_dias = st.slider(
+            "🕒 Filtrar por dias em aberto",
+            min_value=1,
+            max_value=max_dias,
+            value=(1, max_dias),
+            key="ppc_fila_dias_aberto",
+            help="Mostra na fila apenas chamados cujo tempo em aberto está "
+            "dentro do intervalo. Afeta somente esta tabela.",
+        )
+        low_dias, high_dias = faixa_dias
+    else:
+        low_dias, high_dias = 1, max_dias
+
+    dias_col = tabela_fila[COL_DIAS_ABERTO]
+    tabela_prioridade = tabela_fila[dias_col.notna() & dias_col.between(low_dias, high_dias)]
+
     render_styled_dataframe(
         tabela_prioridade,
         date_columns=[COL_CRIADO_EM, COL_DATA_CONCLUSAO],
@@ -250,9 +277,12 @@ def _render_dashboard(df) -> None:
     )
 
     # ---------------- Exportação ----------------
+    # O relatório exporta a fila completa (sem o filtro de dias em aberto,
+    # que é só visual desta tabela), já respeitando os filtros da barra
+    # lateral aplicados em 'filtrado'.
     st.divider()
     excel_bytes = build_excel_report(
-        tabela_chamados=tabela_prioridade,
+        tabela_chamados=tabela_fila,
         agregado_oficina=agregado_por_oficina(filtrado),
         agregado_categoria=agregado_por_categoria(filtrado),
         date_columns=[COL_CRIADO_EM, COL_DATA_CONCLUSAO],
