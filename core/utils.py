@@ -86,6 +86,17 @@ def format_int(value) -> str:
         return "0"
 
 
+def format_decimal(value, casas: int = 1) -> str:
+    """Formata número com separador BR (milhar com ponto, decimal com
+    vírgula) — usado nas médias, que raramente são inteiras."""
+    try:
+        texto = f"{float(value):,.{casas}f}"
+    except (TypeError, ValueError):
+        return "0,0"
+    # Troca em duas etapas para os separadores não colidirem entre si.
+    return texto.replace(",", "_").replace(".", ",").replace("_", ".")
+
+
 def safe_unique_sorted(values: Iterable) -> list[str]:
     """Retorna valores únicos, não nulos, ordenados — para popular filtros."""
     series = pd.Series(list(values)).dropna()

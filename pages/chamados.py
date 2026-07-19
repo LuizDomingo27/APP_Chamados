@@ -29,15 +29,17 @@ from core.config import (
     COL_DATA_INICIO,
     COL_DIAS_ABERTO,
     COL_OFICINA,
+    PALETTE,
     TOP_N_OFICINAS,
 )
-from core.utils import safe_unique_sorted
+from core.utils import format_decimal, format_int, safe_unique_sorted
 from services.data_loader import load_dados_consolidados, validate_workbook
 from services.export_service import build_excel_report
 from services.filter_service import apply_all_filters, semana_options
 from services.kpi_service import (
     agregado_por_categoria,
     agregado_por_oficina,
+    calcular_analise,
     calcular_destaques,
     contagem_por_status,
     enrich_com_dias_aberto,
@@ -56,6 +58,7 @@ from ui.charts import (
     render_echarts,
 )
 from ui.components import (
+    render_analytics_group,
     render_destaque_card,
     render_header,
     render_kpi_card,
@@ -104,6 +107,67 @@ def _render_upload_screen() -> None:
         st.session_state[_FILE_STATE_KEY] = uploaded.getvalue()
         st.session_state[_FILE_NAME_KEY] = uploaded.name
         st.rerun()
+
+
+@st.dialog("📊 Visão Analítica", width="large")
+def _dialog_analise(resumo) -> None:
+    """Pop-up da área analítica. Só exibe — todos os números já vêm
+    calculados de kpi_service.calcular_analise()."""
+    st.caption(
+        "Indicadores do recorte atual — refletem os filtros aplicados na "
+        "barra lateral."
+    )
+
+    render_analytics_group(
+        "Total de Chamados",
+        [
+            {"label": "Mês", "value": format_int(resumo.total_mes), "meta": resumo.label_mes},
+            {"label": "Semana", "value": format_int(resumo.total_semana), "meta": resumo.label_semana},
+            {"label": "Dia", "value": format_int(resumo.total_dia), "meta": resumo.label_dia},
+        ],
+        accent=PALETTE["neon"],
+    )
+
+    render_analytics_group(
+        "Média de Chamados",
+        [
+            {
+                "label": "Por Mês",
+                "value": format_decimal(resumo.media_mes),
+                "meta": f"em {resumo.qtd_meses} mês(es)",
+            },
+            {
+                "label": "Por Semana",
+                "value": format_decimal(resumo.media_semana),
+                "meta": f"em {resumo.qtd_semanas} semana(s)",
+            },
+            {
+                "label": "Por Dia",
+                "value": format_decimal(resumo.media_dia),
+                "meta": f"em {resumo.qtd_dias} dia(s)",
+            },
+        ],
+        accent=PALETTE["purple"],
+    )
+
+    render_analytics_group(
+        "Destaques",
+        [
+            {
+                "label": "🏭 Oficina com mais solicitações",
+                "value": resumo.oficina_top_nome,
+                "meta": f"{format_int(resumo.oficina_top_qtd)} chamado(s)",
+                "texto": True,
+            },
+            {
+                "label": "🏷️ Tipo de chamado mais frequente",
+                "value": resumo.tipo_top_nome,
+                "meta": f"{format_int(resumo.tipo_top_qtd)} chamado(s)",
+                "texto": True,
+            },
+        ],
+        accent=PALETTE["warning"],
+    )
 
 
 def _render_sidebar_filters(df):
@@ -158,6 +222,18 @@ def _render_dashboard(df) -> None:
     if filtrado.empty:
         st.warning("Nenhum chamado encontrado para os filtros selecionados.")
         return
+
+    # Botão do pop-up analítico na sidebar. Fica aqui (e não dentro de
+    # _render_sidebar_filters) porque depende do recorte já filtrado — a
+    # sidebar respeita a ordem das chamadas, então ele aparece logo
+    # abaixo do "Carregar outro arquivo".
+    if st.sidebar.button(
+        "📊 Visão Analítica",
+        width="stretch",
+        key="ppc_analytics_btn",
+        help="Abre o resumo analítico do período filtrado",
+    ):
+        _dialog_analise(calcular_analise(filtrado))
 
     # ---------------- Totais gerais ----------------
     render_section_title("Visão Geral")

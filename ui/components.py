@@ -132,6 +132,50 @@ def render_destaque_card(tag: str, value: str, subvalue: str) -> None:
     )
 
 
+def render_analytics_group(titulo: str, cards: list[dict], accent: str | None = None) -> None:
+    """
+    Renderiza um bloco da área analítica: rótulo do grupo + grade de cards.
+
+    O grupo inteiro sai num único bloco de HTML (grid CSS) em vez de um
+    st.columns por card — assim a altura dos cards se iguala sozinha e o
+    espaçamento fica idêntico em todos os grupos, sem depender das calhas
+    do Streamlit.
+
+    Cada item de `cards` aceita:
+      label — rótulo curto do card (ex.: "Mês")
+      value — número ou texto JÁ formatado para exibição
+      meta  — linha de apoio abaixo do valor (opcional)
+      texto — True quando o valor é um nome, e não um número: reduz a
+              fonte e libera a quebra de linha
+    """
+    accent = accent or PALETTE["neon"]
+
+    cards_html = []
+    for card in cards:
+        meta = card.get("meta", "")
+        meta_html = f'<p class="an-card__meta">{escape(str(meta))}</p>' if meta else ""
+        modifier = " an-card--texto" if card.get("texto") else ""
+        cards_html.append(
+            f'<div class="an-card{modifier}">'
+            f'<p class="an-card__label">{escape(str(card["label"]))}</p>'
+            f'<p class="an-card__value">{escape(str(card["value"]))}</p>'
+            f"{meta_html}"
+            "</div>"
+        )
+
+    # O HTML sai numa linha só, sem indentação: o st.markdown passa a
+    # string pelo parser de Markdown ANTES de injetar o HTML, e linhas
+    # indentadas com 4+ espaços viram bloco de código — o que fazia só o
+    # primeiro card de cada grupo aparecer.
+    html = (
+        f'<div class="an-group" style="--accent:{accent}">'
+        f'<p class="an-group__title"><span class="an-group__bar"></span>{escape(titulo)}</p>'
+        f'<div class="an-grid">{"".join(cards_html)}</div>'
+        "</div>"
+    )
+    st.markdown(html, unsafe_allow_html=True)
+
+
 def render_styled_dataframe(df: pd.DataFrame, date_columns: list[str] | None = None, height: int = 420) -> None:
     """
     Renderiza a tabela como HTML próprio (cabeçalho em gradiente verde-ciano,

@@ -40,6 +40,8 @@ from core.config import (
 )
 from services.kpi_service import (
     Destaques,
+    ResumoAnalitico,
+    calcular_analise,
     tendencia_mensal,
     tendencia_semanal,
 )
@@ -90,6 +92,16 @@ def calcular_destaques_reposicao(df: pd.DataFrame) -> Destaques:
         solicitacao_top_nome=categoria_top_nome,
         solicitacao_top_qtd=categoria_top_qtd,
     )
+
+
+# ---------------------------------------------------------------------------
+# Área analítica (pop-up)
+# ---------------------------------------------------------------------------
+def calcular_analise_reposicao(df: pd.DataFrame) -> ResumoAnalitico:
+    """Números da área analítica de Reposições. A conta é a mesma de
+    Chamados — só o campo "tipo" muda: na planilha de Reposições quem faz
+    esse papel é a Categoria, não o "Tipo de Solicitação"."""
+    return calcular_analise(df, coluna_tipo=COL_CATEGORIA)
 
 
 # ---------------------------------------------------------------------------

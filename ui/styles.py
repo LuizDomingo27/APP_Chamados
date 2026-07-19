@@ -264,6 +264,125 @@ div[data-testid="stMultiSelect"] span[data-baseweb="tag"] {{
     border-radius: 999px !important;
 }}
 
+/* ---------- Área analítica (pop-up) ---------- */
+/* Reaproveita a linguagem visual dos kpi-card (mesma superfície, mesmo
+   glow, mesma família de raio) num formato mais compacto: aqui são 8
+   cards juntos dentro de um diálogo, não 3-4 espalhados na página. */
+.an-group {{
+    margin-bottom: 22px;
+}}
+.an-group__title {{
+    font-family: 'Sora', sans-serif;
+    font-weight: 700;
+    font-size: 12px;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: {p['text_muted']};
+    margin: 0 0 10px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}}
+.an-group__bar {{
+    width: 4px;
+    height: 14px;
+    border-radius: 4px;
+    background: var(--accent, {p['neon']});
+    display: inline-block;
+}}
+
+/* auto-fit + minmax: 3 colunas na largura cheia do diálogo, quebrando
+   sozinho para 2/1 em telas estreitas — sem media query. */
+.an-grid {{
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
+}}
+
+.an-card {{
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(160deg, {p['surface']} 70%, {p['surface_alt']} 100%);
+    border: 1px solid {p['border']};
+    border-left: 3px solid var(--accent, {p['neon']});
+    border-radius: 14px;
+    padding: 14px 16px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.32);
+    transition: box-shadow .2s ease, transform .2s ease;
+}}
+.an-card:hover {{
+    box-shadow: 0 4px 20px {p['neon_glow']};
+    transform: translateY(-2px);
+}}
+.an-card__label {{
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    color: {p['text_muted']};
+    margin: 0 0 8px 0;
+}}
+.an-card__value {{
+    font-family: 'Sora', sans-serif;
+    font-weight: 800;
+    font-size: 26px;
+    line-height: 1.1;
+    color: {p['text']};
+    margin: 0;
+}}
+.an-card__meta {{
+    font-size: 11.5px;
+    color: {p['text_muted']};
+    margin: 6px 0 0 0;
+}}
+
+/* Destaques: o valor é um nome (oficina / tipo de solicitação), não um
+   número — fonte menor e quebra liberada, senão nome longo de oficina
+   estoura o card. */
+.an-card--texto .an-card__value {{
+    font-size: 16px;
+    line-height: 1.35;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}}
+
+/* ---------- Diálogo (pop-up) ---------- */
+div[data-testid="stDialog"] div[role="dialog"] {{
+    background: {p['bg']};
+    border: 1px solid {p['border']};
+    border-radius: 20px;
+    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55);
+}}
+
+/* ---------- Botão da área analítica ---------- */
+/* Escopo pela classe st-key-<key> que o Streamlit aplica no container do
+   widget — evita vazar estilo para os demais botões do app. */
+/* Uma key por página (ppc_ = Chamados, rep_ = Reposições), já que a mesma
+   key não pode ser reusada entre widgets. O botão mora na sidebar, logo
+   abaixo do "Carregar outro arquivo" — a margem apenas separa os dois. */
+.st-key-ppc_analytics_btn,
+.st-key-rep_analytics_btn {{
+    margin-top: 10px;
+}}
+.st-key-ppc_analytics_btn button,
+.st-key-rep_analytics_btn button {{
+    background: linear-gradient(120deg, {p['surface']} 0%, {p['surface_alt']} 100%) !important;
+    border: 1px solid {p['neon_soft']}66 !important;
+    border-radius: 999px !important;
+    color: {p['text']} !important;
+    font-family: 'Sora', sans-serif !important;
+    font-weight: 600 !important;
+    font-size: 13px !important;
+    padding: 6px 18px !important;
+    transition: box-shadow .2s ease, transform .2s ease, border-color .2s ease !important;
+}}
+.st-key-ppc_analytics_btn button:hover,
+.st-key-rep_analytics_btn button:hover {{
+    border-color: {p['neon']} !important;
+    box-shadow: 0 4px 18px {p['neon_glow']} !important;
+    transform: translateY(-1px);
+}}
+
 /* ---------- Seção títulos ---------- */
 .section-title {{
     font-family: 'Sora', sans-serif;

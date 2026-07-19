@@ -37,6 +37,44 @@ from core.config import (
 # Estruturas de retorno
 # ---------------------------------------------------------------------------
 @dataclass(frozen=True)
+class ResumoAnalitico:
+    """Números da área analítica (pop-up "Visão Analítica").
+
+    Os TOTAIS são do período mais recente presente no recorte filtrado
+    (último mês / última semana / último dia com chamados) — por isso cada
+    um vem acompanhado do seu rótulo, para a tela deixar explícito de qual
+    mês/semana/dia o número está falando.
+
+    As MÉDIAS usam o calendário cheio do recorte (todos os meses/semanas/
+    dias entre o primeiro e o último chamado, inclusive os que ficaram sem
+    chamado nenhum) — mesma base da linha de média em tendencia_diaria.
+    Dividir só pelos períodos que tiveram chamado seria outro indicador e
+    inflaria o valor.
+    """
+
+    total_geral: int
+
+    total_mes: int
+    total_semana: int
+    total_dia: int
+    label_mes: str
+    label_semana: str
+    label_dia: str
+
+    media_mes: float
+    media_semana: float
+    media_dia: float
+    qtd_meses: int
+    qtd_semanas: int
+    qtd_dias: int
+
+    oficina_top_nome: str
+    oficina_top_qtd: int
+    tipo_top_nome: str
+    tipo_top_qtd: int
+
+
+@dataclass(frozen=True)
 class Destaques:
     dia_top_data: str
     dia_top_qtd: int
@@ -193,6 +231,17 @@ def tendencia_mensal(df: pd.DataFrame) -> pd.DataFrame:
 # ---------------------------------------------------------------------------
 # Cards de destaque
 # ---------------------------------------------------------------------------
+def _valor_mais_frequente(df: pd.DataFrame, coluna: str) -> tuple[str, int]:
+    """Devolve (valor mais frequente, quantidade) de uma coluna categórica.
+    Coluna ausente ou só com nulos devolve o placeholder ('—', 0)."""
+    if coluna not in df.columns:
+        return "—", 0
+    contagem = df[coluna].value_counts()
+    if contagem.empty:
+        return "—", 0
+    return str(contagem.idxmax()), int(contagem.max())
+
+
 def calcular_destaques(df: pd.DataFrame) -> Destaques:
     """Calcula os 3 destaques: dia com mais pedidos, oficina e tipo de
     solicitação mais frequentes."""
@@ -208,21 +257,8 @@ def calcular_destaques(df: pd.DataFrame) -> Destaques:
     else:
         dia_top_data, dia_top_qtd = "—", 0
 
-    # Oficina com mais pedidos
-    por_oficina = df[COL_OFICINA].value_counts()
-    if not por_oficina.empty:
-        oficina_top_nome = str(por_oficina.idxmax())
-        oficina_top_qtd = int(por_oficina.max())
-    else:
-        oficina_top_nome, oficina_top_qtd = "—", 0
-
-    # Tipo de solicitação mais comum
-    por_solicitacao = df[COL_SOLICITACAO].value_counts()
-    if not por_solicitacao.empty:
-        solicitacao_top_nome = str(por_solicitacao.idxmax())
-        solicitacao_top_qtd = int(por_solicitacao.max())
-    else:
-        solicitacao_top_nome, solicitacao_top_qtd = "—", 0
+    oficina_top_nome, oficina_top_qtd = _valor_mais_frequente(df, COL_OFICINA)
+    solicitacao_top_nome, solicitacao_top_qtd = _valor_mais_frequente(df, COL_SOLICITACAO)
 
     return Destaques(
         dia_top_data=dia_top_data,
@@ -231,6 +267,94 @@ def calcular_destaques(df: pd.DataFrame) -> Destaques:
         oficina_top_qtd=oficina_top_qtd,
         solicitacao_top_nome=solicitacao_top_nome,
         solicitacao_top_qtd=solicitacao_top_qtd,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Área analítica (pop-up)
+# ---------------------------------------------------------------------------
+_RESUMO_VAZIO = ResumoAnalitico(
+    total_geral=0,
+    total_mes=0,
+    total_semana=0,
+    total_dia=0,
+    label_mes="—",
+    label_semana="—",
+    label_dia="—",
+    media_mes=0.0,
+    media_semana=0.0,
+    media_dia=0.0,
+    qtd_meses=0,
+    qtd_semanas=0,
+    qtd_dias=0,
+    oficina_top_nome="—",
+    oficina_top_qtd=0,
+    tipo_top_nome="—",
+    tipo_top_qtd=0,
+)
+
+
+def calcular_analise(
+    df: pd.DataFrame, coluna_tipo: str = COL_SOLICITACAO
+) -> ResumoAnalitico:
+    """Consolida os números da área analítica a partir do recorte já
+    filtrado. Ver ResumoAnalitico para a definição de cada bloco.
+
+    `coluna_tipo` é a coluna que responde "qual o tipo mais frequente":
+    "Tipo de Solicitação" em Chamados e "Categoria" em Reposições — mesma
+    troca que calcular_destaques_reposicao já faz."""
+    if df.empty or COL_CRIADO_EM not in df.columns:
+        return _RESUMO_VAZIO
+
+    serie = df[COL_CRIADO_EM].dropna()
+    if serie.empty:
+        return _RESUMO_VAZIO
+
+    # A base das médias são os chamados datados: um chamado sem "Criado em"
+    # não pertence a nenhum mês/semana/dia e distorceria a divisão.
+    total_geral = int(len(serie))
+    ultimo = serie.max()
+
+    # ---- Totais do período mais recente do recorte ----
+    dias = serie.dt.floor("D")
+    dia_ref = ultimo.floor("D")
+    total_dia = int((dias == dia_ref).sum())
+
+    meses = serie.dt.to_period("M")
+    mes_ref = ultimo.to_period("M")
+    total_mes = int((meses == mes_ref).sum())
+
+    # Semana fechando no domingo — mesma convenção de tendencia_semanal.
+    semanas = serie.dt.to_period("W-SUN")
+    semana_ref = ultimo.to_period("W-SUN")
+    total_semana = int((semanas == semana_ref).sum())
+
+    # ---- Quantidade de períodos do recorte (calendário cheio) ----
+    qtd_dias = int((dia_ref - dias.min()).days) + 1
+    qtd_meses = len(pd.period_range(meses.min(), mes_ref, freq="M"))
+    qtd_semanas = len(pd.period_range(semanas.min(), semana_ref, freq="W-SUN"))
+
+    oficina_top_nome, oficina_top_qtd = _valor_mais_frequente(df, COL_OFICINA)
+    tipo_top_nome, tipo_top_qtd = _valor_mais_frequente(df, coluna_tipo)
+
+    return ResumoAnalitico(
+        total_geral=total_geral,
+        total_mes=total_mes,
+        total_semana=total_semana,
+        total_dia=total_dia,
+        label_mes=mes_ref.start_time.strftime("%m/%Y"),
+        label_semana=f"Sem. {semana_ref.start_time.isocalendar().week}",
+        label_dia=dia_ref.strftime("%d/%m/%Y"),
+        media_mes=total_geral / qtd_meses,
+        media_semana=total_geral / qtd_semanas,
+        media_dia=total_geral / qtd_dias,
+        qtd_meses=qtd_meses,
+        qtd_semanas=qtd_semanas,
+        qtd_dias=qtd_dias,
+        oficina_top_nome=oficina_top_nome,
+        oficina_top_qtd=oficina_top_qtd,
+        tipo_top_nome=tipo_top_nome,
+        tipo_top_qtd=tipo_top_qtd,
     )
 
 
