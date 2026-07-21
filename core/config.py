@@ -102,6 +102,9 @@ STATUS_COLORS = {
 # Quantidade padrão de itens no ranking de oficinas
 TOP_N_OFICINAS = 10
 
+# Quantidade padrão de itens no gráfico de top tipos de solicitação
+TOP_N_SOLICITACOES = 7
+
 # ---------------------------------------------------------------------------
 # Padronização manual de oficinas
 # ---------------------------------------------------------------------------

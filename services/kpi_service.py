@@ -129,6 +129,20 @@ def ranking_oficinas(df: pd.DataFrame, top_n: int = TOP_N_OFICINAS) -> pd.DataFr
     return agregado_por_oficina(df).head(top_n)
 
 
+def agregado_por_coluna(df: pd.DataFrame, coluna: str, top_n: int | None = None) -> pd.DataFrame:
+    """Total de chamados agrupado por uma coluna categórica genérica,
+    ordenado decrescente — usado no gráfico de top tipos de solicitação
+    (Tipo de Solicitação em Chamados, Motivo em Reposições)."""
+    out = (
+        df.groupby(coluna, dropna=False)
+        .size()
+        .reset_index(name="Total de Chamados")
+        .sort_values("Total de Chamados", ascending=False)
+        .reset_index(drop=True)
+    )
+    return out.head(top_n) if top_n is not None else out
+
+
 # ---------------------------------------------------------------------------
 # Tabela ordenada por prioridade (fila de triagem)
 # ---------------------------------------------------------------------------

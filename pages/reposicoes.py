@@ -35,12 +35,14 @@ from core.config import (
     COL_TEMPO_ATENDIMENTO_DIAS,
     PALETTE,
     TOP_N_OFICINAS,
+    TOP_N_SOLICITACOES,
 )
 from core.utils import format_decimal, format_int, safe_unique_sorted
 from services.data_loader import load_dados_consolidados, validate_workbook
 from services.export_service import build_excel_report_reposicao
 from services.kpi_service import (
     agregado_por_categoria,
+    agregado_por_coluna,
     agregado_por_oficina,
     contagem_por_status,
     ranking_oficinas,
@@ -69,9 +71,9 @@ from ui.charts import (
 from ui.components import (
     render_analytics_group,
     render_destaque_card,
+    render_dropdown_all,
     render_header,
     render_kpi_card,
-    render_multiselect_all,
     render_section_title,
     render_status_kpis,
     render_styled_dataframe,
@@ -177,12 +179,12 @@ def _render_sidebar_filters(df):
                   else (min_date.date(), max_date.date()))
 
     semanas_disponiveis = semana_options(df)
-    semanas_selecionadas = render_multiselect_all(
+    semanas_selecionadas = render_dropdown_all(
         "🗓️ Semana(s)", semanas_disponiveis, "_select_all_semanas_filter_rep"
     )
 
     oficinas_disponiveis = safe_unique_sorted(df[COL_OFICINA])
-    oficinas_selecionadas = render_multiselect_all(
+    oficinas_selecionadas = render_dropdown_all(
         "🏭 Oficina(s)", oficinas_disponiveis, "_select_all_oficinas_filter_rep"
     )
 
@@ -331,6 +333,12 @@ def _render_dashboard(df) -> None:
     rank_df = ranking_oficinas(filtrado, TOP_N_OFICINAS)
     if not rank_df.empty:
         render_echarts(build_oficina_ranking_option(rank_df), height=380)
+
+    # ---------------- Top Motivos de Reposição ----------------
+    render_section_title(f"Top {TOP_N_SOLICITACOES} Motivos de Reposição")
+    motivo_df = agregado_por_coluna(filtrado, COL_MOTIVO, TOP_N_SOLICITACOES)
+    if not motivo_df.empty:
+        render_echarts(build_categoria_bar_option(motivo_df, sort_ascending=True), height=380)
 
     # ---------------- Agregados em tabela ----------------
     render_section_title("Totais Agregados")

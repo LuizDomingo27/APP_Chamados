@@ -77,45 +77,36 @@ def render_status_kpis(status_counts: dict[str, int]) -> None:
             )
 
 
-def render_multiselect_all(label: str, options: list[str], state_key: str) -> list[str]:
-    """Filtro multiselect no sidebar, no estilo dropdown nativo do Streamlit
-    (a lista de opções abre direto ao clicar no campo, sem um popover
-    escondendo o conteúdo atrás de um botão). Atalhos "Selecionar todas" /
-    "Limpar" ficam logo abaixo do dropdown.
+def render_dropdown_all(label: str, options: list[str], state_key: str) -> list[str]:
+    """Filtro dropdown (st.selectbox) no sidebar, com opção "Todas" no topo
+    da lista equivalente a nenhum filtro aplicado.
 
-    Lista vazia é uma seleção válida (o usuário limpou tudo) e é tratada
-    pelos filtros como "sem filtro aplicado" — ver
-    services/filter_service.py — nunca resulta em tela vazia.
-
-    O multiselect é um widget controlado só pela sua própria `key`
-    (nenhum `default=` é passado): uma vez que uma key já foi montada, o
-    Streamlit ignora qualquer `default` em reruns seguintes e mantém o
-    valor anterior — então "Selecionar todas"/"Limpar" precisam escrever
-    diretamente em session_state[widget_key] para realmente colar. Por
-    isso os botões são renderizados ANTES do multiselect: o Streamlit
-    proíbe escrever em session_state[widget_key] depois que o widget
-    daquela key já foi instanciado no mesmo run.
+    Seleção única — retorna lista vazia quando "Todas" está selecionada, e
+    uma lista de 1 item com o valor escolhido caso contrário. Mantém o
+    mesmo contrato de retorno do filtro multiselect anterior (lista vazia =
+    sem filtro, ver services/filter_service.py), então os services de
+    filtro não precisam mudar.
     """
-    widget_key = f"{state_key}_multiselect"
+    widget_key = f"{state_key}_dropdown"
+    todas = "Todas"
+    escolhas = [todas, *options]
 
-    if widget_key not in st.session_state:
-        st.session_state[widget_key] = list(options)
-    else:
-        # Opções podem mudar (ex.: novo arquivo carregado) — descarta
-        # valores que não existem mais, senão o widget lança erro ao
-        # validar o valor atual contra a nova lista de opções.
-        st.session_state[widget_key] = [o for o in st.session_state[widget_key] if o in options]
+    # Reseta para "Todas" se a seleção atual não existe mais entre as
+    # opções (ex.: novo arquivo carregado) — evita erro de validação do
+    # selectbox contra a nova lista.
+    if widget_key not in st.session_state or st.session_state[widget_key] not in escolhas:
+        st.session_state[widget_key] = todas
 
     st.sidebar.markdown(f"**{label}**")
-    st.sidebar.multiselect(
+    st.sidebar.selectbox(
         label=label,
-        options=options,
+        options=escolhas,
         key=widget_key,
         label_visibility="collapsed",
-        accept_new_options=True,
-        
     )
-    return st.session_state[widget_key]
+
+    selecionado = st.session_state[widget_key]
+    return [] if selecionado == todas else [selecionado]
 
 
 

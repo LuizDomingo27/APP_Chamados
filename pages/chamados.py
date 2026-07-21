@@ -29,8 +29,10 @@ from core.config import (
     COL_DATA_INICIO,
     COL_DIAS_ABERTO,
     COL_OFICINA,
+    COL_SOLICITACAO,
     PALETTE,
     TOP_N_OFICINAS,
+    TOP_N_SOLICITACOES,
 )
 from core.utils import format_decimal, format_int, safe_unique_sorted
 from services.data_loader import load_dados_consolidados, validate_workbook
@@ -38,6 +40,7 @@ from services.export_service import build_excel_report
 from services.filter_service import apply_all_filters, semana_options
 from services.kpi_service import (
     agregado_por_categoria,
+    agregado_por_coluna,
     agregado_por_oficina,
     calcular_analise,
     calcular_destaques,
@@ -60,9 +63,9 @@ from ui.charts import (
 from ui.components import (
     render_analytics_group,
     render_destaque_card,
+    render_dropdown_all,
     render_header,
     render_kpi_card,
-    render_multiselect_all,
     render_section_title,
     render_status_kpis,
     render_styled_dataframe,
@@ -190,12 +193,12 @@ def _render_sidebar_filters(df):
     numero_chamado = st.sidebar.text_input("Número do chamado", placeholder="Ex: 25128", key="ppc_numero")
 
     semanas_disponiveis = semana_options(df)
-    semanas_selecionadas = render_multiselect_all(
+    semanas_selecionadas = render_dropdown_all(
         "🗓️ Semana(s)", semanas_disponiveis, "_select_all_semanas_filter"
     )
 
     oficinas_disponiveis = safe_unique_sorted(df[COL_OFICINA])
-    oficinas_selecionadas = render_multiselect_all(
+    oficinas_selecionadas = render_dropdown_all(
         "🏭 Oficina(s)", oficinas_disponiveis, "_select_all_oficinas_filter"
     )
 
@@ -282,6 +285,12 @@ def _render_dashboard(df) -> None:
         mes_df = tendencia_mensal(filtrado)
         if not mes_df.empty:
             render_echarts(build_categoria_bar_option(mes_df, sort_ascending=False, show_trend=True), height=360)
+
+    # ---------------- Top Tipos de Solicitação ----------------
+    render_section_title(f"Top {TOP_N_SOLICITACOES} Tipos de Solicitação")
+    solicitacao_df = agregado_por_coluna(filtrado, COL_SOLICITACAO, TOP_N_SOLICITACOES)
+    if not solicitacao_df.empty:
+        render_echarts(build_categoria_bar_option(solicitacao_df, sort_ascending=True), height=380)
 
     # ---------------- Chamados por Categoria ----------------
     # Mesma linha de variação (%) das tendências temporais: aqui ela mostra
