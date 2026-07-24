@@ -44,12 +44,24 @@ from core.config import (
     COL_ORDEM_PRODUCAO,
     COL_PARTE_PECA,
     COL_QUANTIDADE_REPOSICAO,
+    OFICINA_INVALID_NAMES_RAW,
+    OFICINA_INVALID_NAMES_REPOSICAO_RAW,
+    OFICINAS_OFICIAIS_RAW,
 )
+from core.motivo_normalize import canonicalize_motivo
 from services.parser_service import canonicalize_oficinas, remove_invalid_oficinas
 
 _VAZIO = "Não informado"
 
-_RE_NUMERO = re.compile(r"^(\d+)-")
+# O "Nome da tarefa" aparece em dois formatos na planilha:
+#   26-300260622-CONFECCOES ... -Traseiro
+#   MALHA- 1000-300277277-F & L AZEVEDO CONFECCAO LTDA FILIAL  - Etiqueta ...
+# O segundo traz na frente a linha de matéria-prima (JEANS/MALHA/POLO/TEAR)
+# e responde por ~20% das linhas. Sem o prefixo opcional aqui, o número não
+# era reconhecido e todo o trecho "MALHA- 1000-" acabava colado no nome da
+# oficina — como o número muda a cada reposição, cada linha virava uma
+# "oficina" diferente e os totais por oficina saíam fragmentados.
+_RE_NUMERO = re.compile(r"^\s*(?:[A-Za-zÀ-ÿ]+-\s*)?(\d+)-")
 
 # Sufixos de razão social que marcam o fim do nome real da oficina. Usados
 # como rede de segurança: em algumas linhas o texto de "Parte da peça" no
@@ -63,7 +75,16 @@ _RE_NUMERO = re.compile(r"^(\d+)-")
 # (o "ME" final também é reconhecido, então nada é cortado ali). Oficinas
 # sem nenhum desses sufixos (ex.: "INDUSTRIALIZACAO EXTERNA") não são
 # afetadas.
-_RE_SUFIXO_EMPRESARIAL = re.compile(r"\b(?:LTDA|EIRELI|EPP|MEI|S/A|S\.A\.?|ME)\b", re.IGNORECASE)
+# O sufixo empresarial pode vir seguido do sufixo de unidade/linha
+# (MATRIZ, FILIAL, PÓLO, TEAR, BÁSICO, ELABORADO), que faz parte do nome
+# cadastrado — "F & L AZEVEDO CONFECCAO LTDA FILIAL". Cortar no LTDA
+# descartaria o "FILIAL" e somaria matriz e filial no mesmo total, então o
+# corte só acontece depois desses sufixos.
+_RE_SUFIXO_EMPRESARIAL = re.compile(
+    r"\b(?:LTDA|EIRELI|EPP|MEI|S/A|S\.A\.?|ME|LIMITADA)\b\.?"
+    r"(?:\s*-?\s*(?:ME|MATRIZ|FILIAL|P[OÓ]LO|TEAR|B[AÁ]SICO|ELABORADO))*",
+    re.IGNORECASE,
+)
 
 
 def _truncar_apos_sufixo_empresarial(oficina: str) -> str:
@@ -129,7 +150,11 @@ def parse_reposicao_row(nome_tarefa: str, notas: str) -> dict[str, str | None]:
         COL_OFICINA: oficina,
         COL_ORDEM_PRODUCAO: ordem or _VAZIO,
         COL_PARTE_PECA: parte or _VAZIO,
-        COL_MOTIVO: motivo or _VAZIO,
+        # O motivo é digitado à mão pela oficina — a mesma causa aparece em
+        # dezenas de grafias ("VEIO FALTANDO" / "faltou" / "insuficiente para
+        # finalizar a ordem"). Sem reduzir ao rótulo canônico, o ranking de
+        # motivos se fragmenta e nenhuma fatia reflete o volume real.
+        COL_MOTIVO: canonicalize_motivo(motivo) if motivo else _VAZIO,
         COL_QUANTIDADE_REPOSICAO: quantidade or _VAZIO,
     }
 
@@ -139,9 +164,12 @@ def enrich_with_parsed_fields_reposicao(df: pd.DataFrame) -> pd.DataFrame:
     Aplica parse_reposicao_row em todo o DataFrame, adiciona as colunas
     derivadas (Número da Reposição, Oficina, Ordem de Produção, Parte da
     Peça, Motivo, Quantidade Solicitada), remove reposições com oficina
-    inválida e padroniza grafias divergentes do nome da oficina —
-    reaproveitando a mesma lógica de canonicalização usada nos Chamados
-    (services.parser_service), já que são as mesmas oficinas parceiras.
+    inválida e padroniza grafias divergentes do nome da oficina.
+
+    A canonicalização reaproveita services.parser_service, mas aqui é
+    ancorada no cadastro oficial (OFICINAS_OFICIAIS_RAW): o nome que vai
+    para os KPIs é sempre o cadastrado, não a grafia mais frequente da
+    planilha.
     """
     parsed = df.apply(
         lambda row: parse_reposicao_row(row[COL_NOME_TAREFA], row[COL_NOTAS]),
@@ -158,8 +186,10 @@ def enrich_with_parsed_fields_reposicao(df: pd.DataFrame) -> pd.DataFrame:
         COL_QUANTIDADE_REPOSICAO,
     ]
     out[cols] = parsed[cols]
-    out = remove_invalid_oficinas(out)
-    out = canonicalize_oficinas(out)
+    out = remove_invalid_oficinas(
+        out, OFICINA_INVALID_NAMES_RAW + OFICINA_INVALID_NAMES_REPOSICAO_RAW
+    )
+    out = canonicalize_oficinas(out, oficinas_oficiais=OFICINAS_OFICIAIS_RAW)
 
     # A planilha de origem tem espaços em branco soltos na Categoria
     # (ex.: "    TRIAGEM", "AVIAMENTO ") — não são grafias divergentes,

@@ -119,6 +119,19 @@ def build_trend_line_option(trend_df: pd.DataFrame) -> dict:
                 "symbolSize": 6,
                 "lineStyle": {"color": PALETTE["neon"], "width": 3},
                 "itemStyle": {"color": PALETTE["neon"]},
+                "label": {
+                    "show": True,
+                    "position": "top",
+                    "color": PALETTE["text"],
+                    "fontFamily": _CHART_FONT,
+                    "fontSize": 10.5,
+                    "fontWeight": 600,
+                },
+                # A série diária pode ter dezenas de pontos e os rótulos
+                # encostariam uns nos outros. hideOverlap deixa o ECharts
+                # omitir os que colidem, mantendo os demais legíveis — sem
+                # isso o gráfico vira um borrão de números em períodos longos.
+                "labelLayout": {"hideOverlap": True},
                 "areaStyle": {
                     "color": {
                         "type": "linear",
@@ -202,6 +215,117 @@ def build_oficina_ranking_option(ranking_df: pd.DataFrame) -> dict:
     }
 
 
+def build_donut_option(
+    dados_df: pd.DataFrame,
+    titulo_centro: str = "Total",
+    unidade: str = "chamado(s)",
+) -> dict:
+    """
+    Rosca (donut) com a distribuição de um punhado de categorias — usada
+    para comparar o peso dos últimos meses entre si.
+
+    Espera o mesmo formato das demais funções deste módulo (primeira
+    coluna = rótulo, "Total de Chamados" = valor), para poder receber
+    direto a saída de tendencia_mensal sem transformação intermediária.
+    O buraco do meio exibe o total somado das fatias, que é a leitura
+    que se perde quando o gráfico só mostra percentuais.
+
+    ``unidade`` é o substantivo usado no tooltip ("chamado(s)",
+    "reposição(ões)") — o mesmo gráfico atende as duas páginas.
+    """
+    nomes = dados_df.iloc[:, 0].astype(str).tolist()
+    valores = dados_df["Total de Chamados"].tolist()
+    total = int(sum(valores))
+
+    # Uma cor por fatia, do acento primário ao secundário — poucas fatias
+    # (3 por padrão), então uma lista fixa basta e mantém a ordem
+    # cronológica legível: mês mais antigo no tom mais claro.
+    cores = [PALETTE["purple_soft"], PALETTE["neon_soft"], PALETTE["neon"]]
+    data = [
+        {
+            "name": nome,
+            "value": valor,
+            "itemStyle": {"color": cores[i % len(cores)]},
+        }
+        for i, (nome, valor) in enumerate(zip(nomes, valores))
+    ]
+
+    return {
+        "tooltip": {
+            **_TOOLTIP_BASE,
+            "trigger": "item",
+            "formatter": f"{{b}}<br/><b>{{c}}</b> {unidade} ({{d}}%)",
+        },
+        "legend": {
+            "bottom": 0,
+            "icon": "circle",
+            "itemWidth": 9,
+            "itemHeight": 9,
+            "textStyle": {
+                "color": PALETTE["text_muted"],
+                "fontFamily": _CHART_FONT,
+                "fontSize": 11,
+            },
+        },
+        "series": [
+            {
+                "type": "pie",
+                "radius": ["52%", "76%"],
+                "center": ["50%", "44%"],
+                "avoidLabelOverlap": True,
+                # Sem isso o ECharts imprime "21.55%" — duas casas num
+                # rótulo curto só poluem a leitura da fatia.
+                "percentPrecision": 1,
+                "data": data,
+                "itemStyle": {
+                    "borderColor": PALETTE["surface"],
+                    "borderWidth": 3,
+                    "borderRadius": 6,
+                },
+                "label": {
+                    "show": True,
+                    "position": "outside",
+                    "formatter": "{c}\n{d}%",
+                    "color": PALETTE["text"],
+                    "fontFamily": _CHART_FONT,
+                    "fontSize": 11,
+                    "fontWeight": 600,
+                    "lineHeight": 14,
+                },
+                "labelLine": {"length": 8, "length2": 8, "lineStyle": {"color": PALETTE["border"]}},
+                "emphasis": {"scaleSize": 6},
+            }
+        ],
+        # O total vai como "graphic" (e não como label da série) porque um
+        # label central de pie só aparece no hover da fatia; aqui ele
+        # precisa ficar visível o tempo todo, dentro do furo da rosca.
+        "graphic": [
+            {
+                "type": "text",
+                "left": "center",
+                "top": "38%",
+                "style": {
+                    "text": str(total),
+                    "fill": PALETTE["text"],
+                    "font": f"700 22px {_CHART_FONT}",
+                    "textAlign": "center",
+                },
+            },
+            {
+                "type": "text",
+                "left": "center",
+                "top": "48%",
+                "style": {
+                    "text": titulo_centro,
+                    "fill": PALETTE["text_muted"],
+                    "font": f"500 11px {_CHART_FONT}",
+                    "textAlign": "center",
+                },
+            },
+        ],
+    }
+
+
 def build_categoria_bar_option(
     categoria_df: pd.DataFrame,
     sort_ascending: bool = True,
@@ -225,12 +349,25 @@ def build_categoria_bar_option(
     nomes = df_sorted.iloc[:, 0].astype(str).tolist()
     valores = df_sorted["Total de Chamados"].tolist()
 
+    # Rótulo com o total de cada coluna, acima da barra. É o único rótulo
+    # desenhado no gráfico — a variação percentual fica só no tooltip, pois
+    # impressa sobre as colunas ela cobria justamente estes valores.
+    label_barra: dict = {
+        "show": True,
+        "position": "top",
+        "color": PALETTE["text"],
+        "fontFamily": _CHART_FONT,
+        "fontSize": 11,
+        "fontWeight": 600,
+    }
+
     series: list[dict] = [
         {
             "name": "Total",
             "type": "bar",
             "data": valores,
             "barWidth": "55%",
+            "label": label_barra,
             "itemStyle": {
                 "borderRadius": [8, 8, 0, 0],
                 "color": {
@@ -260,6 +397,8 @@ def build_categoria_bar_option(
         # rótulo do total) — em vez disso plota a variação percentual em
         # relação ao período anterior, num eixo secundário próprio, já que a
         # escala de "%" não tem relação com a escala de contagem das barras.
+        # O número da variação aparece apenas no tooltip: impresso sobre o
+        # gráfico ele cobria os rótulos de total das colunas.
         pct_points: list[dict] = []
         for i, valor in enumerate(valores):
             anterior = valores[i - 1] if i > 0 else None
@@ -267,36 +406,14 @@ def build_categoria_bar_option(
                 pct_points.append({"value": None})
                 continue
             variacao = round((valor - anterior) / anterior * 100, 1)
-            # Verde do cabeçalho das tabelas (tom escuro) para variação positiva:
-            # branco sobre esse verde tem contraste bem melhor que o neon claro.
-            # Queda continua em vermelho para manter o sinal de alerta.
+            # Cor do ponto mantém o sinal de leitura rápida mesmo sem rótulo:
+            # verde para alta, vermelho para queda.
             cor = PALETTE["table_header_start"] if variacao >= 0 else PALETTE["danger"]
-            texto = f"{variacao:+.1f}%" if variacao != 0 else "0%"
-            pct_points.append(
-                {
-                    "value": variacao,
-                    "itemStyle": {"color": cor},
-                    # Rótulo em "pílula": texto branco sobre fundo sólido na cor
-                    # da variação — no tema light o texto colorido puro ficava
-                    # com contraste baixo e "sumia" sobre o fundo claro.
-                    "label": {
-                        "show": True,
-                        "position": "top",
-                        "formatter": texto,
-                        "color": "#FFFFFF",
-                        "backgroundColor": cor,
-                        "padding": [3, 6],
-                        "borderRadius": 5,
-                        "fontFamily": _CHART_FONT,
-                        "fontSize": 11,
-                        "fontWeight": 700,
-                    },
-                }
-            )
+            pct_points.append({"value": variacao, "itemStyle": {"color": cor}})
 
         series.append(
             {
-                "name": "Variação (%)",
+                "name": "Variação vs. período anterior (%)",
                 "type": "line",
                 "yAxisIndex": 1,
                 "data": pct_points,
@@ -305,7 +422,6 @@ def build_categoria_bar_option(
                 "symbolSize": 7,
                 "z": 3,
                 "connectNulls": True,
-                "tooltip": {"show": False},
                 "lineStyle": {"color": PALETTE["text_muted"], "width": 2, "type": "dashed"},
                 "itemStyle": {"borderColor": "#FFFFFF", "borderWidth": 1.5},
             }

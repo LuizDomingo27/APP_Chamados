@@ -78,8 +78,12 @@ def render_status_kpis(status_counts: dict[str, int]) -> None:
 
 
 def render_dropdown_all(label: str, options: list[str], state_key: str) -> list[str]:
-    """Filtro dropdown (st.selectbox) no sidebar, com opção "Todas" no topo
-    da lista equivalente a nenhum filtro aplicado.
+    """Filtro dropdown (st.selectbox) com opção "Todas" no topo da lista,
+    equivalente a nenhum filtro aplicado.
+
+    Renderiza no container ATUAL (e não em st.sidebar): as páginas o
+    posicionam dentro das colunas da barra de filtros do topo, já que a
+    navegação passou a ser uma navbar e não existe mais barra lateral.
 
     Seleção única — retorna lista vazia quando "Todas" está selecionada, e
     uma lista de 1 item com o valor escolhido caso contrário. Mantém o
@@ -97,13 +101,7 @@ def render_dropdown_all(label: str, options: list[str], state_key: str) -> list[
     if widget_key not in st.session_state or st.session_state[widget_key] not in escolhas:
         st.session_state[widget_key] = todas
 
-    st.sidebar.markdown(f"**{label}**")
-    st.sidebar.selectbox(
-        label=label,
-        options=escolhas,
-        key=widget_key,
-        label_visibility="collapsed",
-    )
+    st.selectbox(label=label, options=escolhas, key=widget_key)
 
     selecionado = st.session_state[widget_key]
     return [] if selecionado == todas else [selecionado]
@@ -167,7 +165,12 @@ def render_analytics_group(titulo: str, cards: list[dict], accent: str | None = 
     st.markdown(html, unsafe_allow_html=True)
 
 
-def render_styled_dataframe(df: pd.DataFrame, date_columns: list[str] | None = None, height: int = 420) -> None:
+def render_styled_dataframe(
+    df: pd.DataFrame,
+    date_columns: list[str] | None = None,
+    height: int = 420,
+    fit_content: bool = False,
+) -> None:
     """
     Renderiza a tabela como HTML próprio (cabeçalho em gradiente verde-ciano,
     linhas com zebra suavizada, cabeçalho centralizado e valores alinhados
@@ -178,6 +181,10 @@ def render_styled_dataframe(df: pd.DataFrame, date_columns: list[str] | None = N
     A largura de cada coluna segue o conteúdo (table-layout: auto do
     navegador) — sem larguras fixas artificiais estourando ou espremendo
     colunas.
+
+    `fit_content=True` faz a tabela ocupar só a largura do conteúdo e ficar
+    centralizada — usado nas tabelas de poucas colunas, que esticadas até a
+    borda ficariam com um vazio enorme no meio.
     """
     date_columns = date_columns or []
     display_df = df.copy()
@@ -230,8 +237,12 @@ def render_styled_dataframe(df: pd.DataFrame, date_columns: list[str] | None = N
             )
         rows_html.append(f"<tr>{''.join(cells)}</tr>")
 
+    wrapper_class = "styled-table-wrapper"
+    if fit_content:
+        wrapper_class += " styled-table-wrapper--fit"
+
     table_html = f"""
-    <div class="styled-table-wrapper">
+    <div class="{wrapper_class}">
         <div class="ppc-table-scroll" style="max-height:{height}px;">
             <table class="ppc-table">
                 <thead><tr>{header_html}</tr></thead>

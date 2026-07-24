@@ -23,40 +23,37 @@ if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
 from core.config import (
-    COL_CONCLUIDO_EM,
     COL_CRIADO_EM,
-    COL_DATA_CONCLUSAO,
-    COL_DATA_INICIO,
-    COL_DIAS_ABERTO,
     COL_OFICINA,
     COL_SOLICITACAO,
+    OFICINA_ALIASES_RAW,
+    OFICINA_INVALID_NAMES_RAW,
+    OFICINA_SUFIXOS_MATERIA_PRIMA,
+    OFICINAS_OFICIAIS_RAW,
     PALETTE,
-    TOP_N_OFICINAS,
     TOP_N_SOLICITACOES,
 )
 from core.utils import format_decimal, format_int, safe_unique_sorted
 from services.data_loader import load_dados_consolidados, validate_workbook
-from services.export_service import build_excel_report
 from services.filter_service import apply_all_filters, semana_options
 from services.kpi_service import (
-    agregado_por_categoria,
     agregado_por_coluna,
-    agregado_por_oficina,
     calcular_analise,
     calcular_destaques,
     contagem_por_status,
-    enrich_com_dias_aberto,
-    ranking_oficinas,
-    tabela_ordenada_por_prioridade,
     tendencia_diaria,
     tendencia_mensal,
     tendencia_semanal,
     total_chamados,
 )
-from services.parser_service import enrich_with_parsed_fields
+from services.parser_service import (
+    canonicalizacao_fingerprint,
+    enrich_with_parsed_fields,
+)
+from services.upload_cache import clear_upload, load_upload, save_upload
 from ui.charts import (
     build_categoria_bar_option,
-    build_oficina_ranking_option,
+    build_donut_option,
     build_trend_line_option,
     render_echarts,
 )
@@ -70,23 +67,38 @@ from ui.components import (
     render_status_kpis,
     render_styled_dataframe,
 )
-from ui.styles import get_custom_css
-
-st.markdown(get_custom_css(), unsafe_allow_html=True)
+# O CSS custom é injetado uma única vez em app.py, antes da navbar.
 
 # Chave onde os BYTES do arquivo ficam persistidos, desacoplada da key do
 # widget st.file_uploader. Isso é proposital: se o widget e o estado
 # persistido compartilhassem a mesma key, o Streamlit limpa o estado de
-# um widget que deixa de ser renderizado em um rerun (ex.: ao clicar em
-# "Exportar", que sempre dispara um rerun) — o que fazia o app "voltar"
+# um widget que deixa de ser renderizado em um rerun (qualquer interação
+# que troque a tela renderizada) — o que fazia o app "voltar"
 # para a tela de upload sozinho. Guardando os bytes numa chave própria,
 # o estado sobrevive a qualquer rerun, independente do que é renderizado.
 _FILE_STATE_KEY = "ppc_file_bytes"
 _FILE_NAME_KEY = "ppc_file_name"
 
+# Identificador desta página no cache em disco de uploads: o session_state
+# morre com a sessão do navegador (F5 = tela de upload de novo), então os
+# bytes também vão para services/upload_cache.py e voltam sozinhos.
+_CACHE_SLOT = "chamados"
+
+
+# Assinatura das regras de padronização de oficinas. Entra como argumento
+# da função cacheada para que editar o cadastro/aliases em core.config
+# invalide o cache — sem isso o dashboard segue mostrando os nomes
+# calculados pela versão anterior das regras.
+_REGRAS_OFICINA = canonicalizacao_fingerprint(
+    OFICINAS_OFICIAIS_RAW,
+    OFICINA_ALIASES_RAW,
+    OFICINA_INVALID_NAMES_RAW,
+    OFICINA_SUFIXOS_MATERIA_PRIMA,
+)
+
 
 @st.cache_data(show_spinner=False)
-def _load_and_enrich(file_bytes: bytes):
+def _load_and_enrich(file_bytes: bytes, regras_oficina: str):
     df = load_dados_consolidados(io.BytesIO(file_bytes))
     return enrich_with_parsed_fields(df)
 
@@ -109,6 +121,7 @@ def _render_upload_screen() -> None:
     if uploaded is not None:
         st.session_state[_FILE_STATE_KEY] = uploaded.getvalue()
         st.session_state[_FILE_NAME_KEY] = uploaded.name
+        save_upload(_CACHE_SLOT, uploaded.name, uploaded.getvalue())
         st.rerun()
 
 
@@ -118,7 +131,7 @@ def _dialog_analise(resumo) -> None:
     calculados de kpi_service.calcular_analise()."""
     st.caption(
         "Indicadores do recorte atual — refletem os filtros aplicados na "
-        "barra lateral."
+        "barra de filtros."
     )
 
     render_analytics_group(
@@ -173,69 +186,89 @@ def _dialog_analise(resumo) -> None:
     )
 
 
-def _render_sidebar_filters(df):
-    st.sidebar.markdown("### 🔍 Filtros")
-
+def _render_filtros(df):
+    """Barra de filtros do topo. Substitui a antiga sidebar — a navegação
+    virou navbar (st.navigation position="top"), então não há mais barra
+    lateral onde ancorar os filtros. Devolve também se o botão da Visão
+    Analítica foi clicado, porque o pop-up depende do recorte filtrado e
+    só pode ser aberto depois que os filtros forem aplicados."""
     min_date = df[COL_CRIADO_EM].min()
     max_date = df[COL_CRIADO_EM].max()
 
-    date_range = st.sidebar.date_input(
-        "Período (Criado em)",
-        value=(min_date.date(), max_date.date()),
-        min_value=min_date.date(),
-        max_value=max_date.date(),
-        format="DD/MM/YYYY",
-        key="ppc_date_range",
-    )
+    with st.expander("🔍 Filtros", expanded=True):
+        # Campos e botões na MESMA linha; vertical_alignment="bottom" alinha
+        # os botões (sem rótulo) pela base dos campos (que têm rótulo acima).
+        c_periodo, c_numero, c_semana, c_oficina, c_analise, c_reset = st.columns(
+            [2, 1.4, 1.5, 2.2, 1.3, 1.6], vertical_alignment="bottom"
+        )
+        with c_periodo:
+            date_range = st.date_input(
+                "Período (Criado em)",
+                value=(min_date.date(), max_date.date()),
+                min_value=min_date.date(),
+                max_value=max_date.date(),
+                format="DD/MM/YYYY",
+                key="ppc_date_range",
+            )
+        with c_numero:
+            numero_chamado = st.text_input(
+                "Número do chamado", placeholder="Ex: 25128", key="ppc_numero"
+            )
+        with c_semana:
+            semanas_selecionadas = render_dropdown_all(
+                "🗓️ Semana(s)", semana_options(df), "_select_all_semanas_filter"
+            )
+        with c_oficina:
+            oficinas_selecionadas = render_dropdown_all(
+                "🏭 Oficina(s)", safe_unique_sorted(df[COL_OFICINA]), "_select_all_oficinas_filter"
+            )
+
+        with c_analise:
+            abrir_analise = st.button(
+                "📊 Visão Analítica",
+                width="stretch",
+                key="ppc_analytics_btn",
+                help="Abre o resumo analítico do período filtrado",
+            )
+        with c_reset:
+            if st.button("🔄 Carregar outro arquivo", width="stretch", key="ppc_reset"):
+                st.session_state.pop(_FILE_STATE_KEY, None)
+                st.session_state.pop(_FILE_NAME_KEY, None)
+                clear_upload(_CACHE_SLOT)
+                st.cache_data.clear()
+                st.rerun()
+
+        nome_arquivo = st.session_state.get(_FILE_NAME_KEY)
+        if nome_arquivo:
+            st.caption(f"📄 Arquivo carregado: **{nome_arquivo}**")
+
     start, end = (date_range if isinstance(date_range, tuple) and len(date_range) == 2
                   else (min_date.date(), max_date.date()))
 
-    numero_chamado = st.sidebar.text_input("Número do chamado", placeholder="Ex: 25128", key="ppc_numero")
-
-    semanas_disponiveis = semana_options(df)
-    semanas_selecionadas = render_dropdown_all(
-        "🗓️ Semana(s)", semanas_disponiveis, "_select_all_semanas_filter"
-    )
-
-    oficinas_disponiveis = safe_unique_sorted(df[COL_OFICINA])
-    oficinas_selecionadas = render_dropdown_all(
-        "🏭 Oficina(s)", oficinas_disponiveis, "_select_all_oficinas_filter"
-    )
-
-    st.sidebar.divider()
-    if st.sidebar.button("🔄 Carregar outro arquivo", width="stretch", key="ppc_reset"):
-        st.session_state.pop(_FILE_STATE_KEY, None)
-        st.session_state.pop(_FILE_NAME_KEY, None)
-        st.cache_data.clear()
-        st.rerun()
-
-    return start, end, numero_chamado, oficinas_selecionadas, semanas_selecionadas
+    return start, end, numero_chamado, oficinas_selecionadas, semanas_selecionadas, abrir_analise
 
 
 def _render_dashboard(df) -> None:
-    start, end, numero_chamado, oficinas, semanas = _render_sidebar_filters(df)
+    # O cabeçalho mostra a contagem do recorte, que só existe depois dos
+    # filtros — reservamos o espaço dele antes e preenchemos no fim, para
+    # que continue aparecendo ACIMA da barra de filtros.
+    slot_header = st.container()
+
+    start, end, numero_chamado, oficinas, semanas, abrir_analise = _render_filtros(df)
     filtrado = apply_all_filters(df, start, end, numero_chamado, oficinas, semanas)
 
-    render_header(
-        title="Central de Acompanhamento de Chamados",
-        subtitle=f"{total_chamados(filtrado)} chamado(s) no filtro atual",
-        icon="🎫",
-    )
+    with slot_header:
+        render_header(
+            title="Central de Acompanhamento de Chamados",
+            subtitle=f"{total_chamados(filtrado)} chamado(s) no filtro atual",
+            icon="🎫",
+        )
 
     if filtrado.empty:
         st.warning("Nenhum chamado encontrado para os filtros selecionados.")
         return
 
-    # Botão do pop-up analítico na sidebar. Fica aqui (e não dentro de
-    # _render_sidebar_filters) porque depende do recorte já filtrado — a
-    # sidebar respeita a ordem das chamadas, então ele aparece logo
-    # abaixo do "Carregar outro arquivo".
-    if st.sidebar.button(
-        "📊 Visão Analítica",
-        width="stretch",
-        key="ppc_analytics_btn",
-        help="Abre o resumo analítico do período filtrado",
-    ):
+    if abrir_analise:
         _dialog_analise(calcular_analise(filtrado))
 
     # ---------------- Totais gerais ----------------
@@ -292,98 +325,46 @@ def _render_dashboard(df) -> None:
     if not solicitacao_df.empty:
         render_echarts(build_categoria_bar_option(solicitacao_df, sort_ascending=True), height=380)
 
-    # ---------------- Chamados por Categoria ----------------
-    # Mesma linha de variação (%) das tendências temporais: aqui ela mostra
-    # o quanto cada categoria varia em relação à anterior (ordenadas por
-    # volume, crescente), em taxa percentual.
-    render_section_title("Chamados por Categoria")
-    categoria_df = agregado_por_categoria(filtrado)
-    if not categoria_df.empty:
-        render_echarts(
-            build_categoria_bar_option(categoria_df, sort_ascending=True, show_trend=True),
-            height=380,
-        )
-
-    # ---------------- Ranking de Oficinas ----------------
-    render_section_title(f"Ranking de Oficinas (Top {TOP_N_OFICINAS})")
-    rank_df = ranking_oficinas(filtrado, TOP_N_OFICINAS)
-    if not rank_df.empty:
-        render_echarts(build_oficina_ranking_option(rank_df), height=380)
-
-    # ---------------- Agregados em tabela ----------------
-    render_section_title("Totais Agregados")
-    tab_oficina, tab_categoria = st.tabs(["Por Oficina", "Por Categoria"])
-    with tab_oficina:
-        render_styled_dataframe(agregado_por_oficina(filtrado), height=320)
-    with tab_categoria:
-        render_styled_dataframe(agregado_por_categoria(filtrado), height=320)
-
-    # ---------------- Tabela detalhada (ordenada por prioridade) ----------------
-    render_section_title("Chamados — Fila por Prioridade")
-    detalhe_cols = [
-        "Categoria",
-        COL_OFICINA,
-        "Status",
-        "Prioridade",
-        COL_DIAS_ABERTO,
-        COL_CRIADO_EM,
-        COL_DATA_CONCLUSAO,
-    ]
-    tabela_fila = enrich_com_dias_aberto(tabela_ordenada_por_prioridade(filtrado))
-    detalhe_cols = [c for c in detalhe_cols if c in tabela_fila.columns]
-    tabela_fila = tabela_fila[detalhe_cols]
-
-    # Filtro local por dias em aberto — afeta SOMENTE esta tabela (não os
-    # KPIs, gráficos ou demais tabelas acima). Slider de faixa com mínimo
-    # de 1 dia: chamados abertos há menos de 1 dia ficam de fora.
-    dias_validos = tabela_fila[COL_DIAS_ABERTO].dropna()
-    max_dias = int(dias_validos.max()) if not dias_validos.empty else 1
-    if max_dias > 1:
-        faixa_dias = st.slider(
-            "🕒 Filtrar por dias em aberto",
-            min_value=1,
-            max_value=max_dias,
-            value=(1, max_dias),
-            key="ppc_fila_dias_aberto",
-            help="Mostra na fila apenas chamados cujo tempo em aberto está "
-            "dentro do intervalo. Afeta somente esta tabela.",
-        )
-        low_dias, high_dias = faixa_dias
-    else:
-        low_dias, high_dias = 1, max_dias
-
-    dias_col = tabela_fila[COL_DIAS_ABERTO]
-    tabela_prioridade = tabela_fila[dias_col.notna() & dias_col.between(low_dias, high_dias)]
-
-    render_styled_dataframe(
-        tabela_prioridade,
-        date_columns=[COL_CRIADO_EM, COL_DATA_CONCLUSAO],
-        height=420,
-    )
-
-    # ---------------- Exportação ----------------
-    # O relatório exporta a fila completa (sem o filtro de dias em aberto,
-    # que é só visual desta tabela), já respeitando os filtros da barra
-    # lateral aplicados em 'filtrado'.
-    st.divider()
-    excel_bytes = build_excel_report(
-        tabela_chamados=tabela_fila,
-        agregado_oficina=agregado_por_oficina(filtrado),
-        agregado_categoria=agregado_por_categoria(filtrado),
-        date_columns=[COL_CRIADO_EM, COL_DATA_CONCLUSAO],
-    )
-
-    st.download_button(
-        "⬇️ Exportar dados filtrados (Excel)",
-        data=excel_bytes,
-        file_name="chamados_filtrados.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        key="ppc_download",
-    )
+    # ---------------- Fechamento: total por mês ----------------
+    # Mesmo fechamento da página de Reposições: a tabela traz a série
+    # completa do recorte e a rosca ao lado isola os 3 meses mais recentes,
+    # que é o horizonte usado na conversa do dia a dia.
+    agregado_mes = tendencia_mensal(filtrado)
+    if not agregado_mes.empty:
+        render_section_title("Chamados por Mês")
+        # A rosca fica com 70% da linha: a tabela tem só 2 colunas estreitas
+        # e não precisa de mais que o restante, enquanto o gráfico ganha o
+        # espaço necessário para os rótulos externos das fatias respirarem.
+        col_tabela, col_rosca = st.columns([3, 7], gap="medium")
+        with col_tabela:
+            render_styled_dataframe(agregado_mes, height=460, fit_content=True)
+        with col_rosca:
+            ultimos_meses = agregado_mes.tail(3)
+            st.caption(f"Últimos {len(ultimos_meses)} meses")
+            # O diâmetro da rosca é limitado pela MENOR dimensão do
+            # container — alargar a coluna sozinha não aumentaria o círculo,
+            # por isso a altura sobe junto com a largura.
+            render_echarts(
+                build_donut_option(
+                    ultimos_meses,
+                    titulo_centro="chamados",
+                    unidade="chamado(s)",
+                ),
+                height=460,
+            )
 
 
 def main() -> None:
     file_bytes = st.session_state.get(_FILE_STATE_KEY)
+
+    # Sessão nova (primeiro acesso do dia, F5, outra aba): recupera do disco
+    # o último arquivo usado, em vez de exigir um novo upload.
+    if file_bytes is None:
+        em_cache = load_upload(_CACHE_SLOT)
+        if em_cache is not None:
+            file_bytes, nome = em_cache
+            st.session_state[_FILE_STATE_KEY] = file_bytes
+            st.session_state[_FILE_NAME_KEY] = nome
 
     if file_bytes is None:
         _render_upload_screen()
@@ -394,7 +375,7 @@ def main() -> None:
         st.error(error_msg)
         return
 
-    df = _load_and_enrich(file_bytes)
+    df = _load_and_enrich(file_bytes, _REGRAS_OFICINA)
     _render_dashboard(df)
 
 

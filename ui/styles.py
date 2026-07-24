@@ -30,6 +30,55 @@ h1, h2, h3, h4, .kpi-value {{
     font-family: 'Sora', sans-serif !important;
 }}
 
+/* ---------- Navbar (app.py) ---------- */
+/* A navegação nativa está desligada; a navbar é uma linha de st.page_link
+   dentro do container com key="navbar". Aqui ela vira uma barra de pílulas
+   centralizada, e a página ativa ganha o preenchimento neon. */
+[data-testid="stSidebar"],
+[data-testid="stSidebarCollapsedControl"] {{
+    display: none !important;
+}}
+
+.st-key-navbar {{
+    gap: 10px;
+    margin-bottom: 18px;
+    padding: 8px;
+    background: linear-gradient(120deg, {p['surface']} 0%, {p['surface_alt']} 100%);
+    border: 1px solid {p['border']};
+    border-radius: 999px;
+    width: fit-content;
+    margin-left: auto;
+    margin-right: auto;
+}}
+
+.st-key-navbar button {{
+    background: transparent !important;
+    border: none !important;
+    border-radius: 999px !important;
+    padding: 8px 26px !important;
+    font-family: 'Sora', sans-serif !important;
+    font-weight: 600 !important;
+    font-size: 14px !important;
+    color: {p['text_muted']} !important;
+    transition: background .2s ease, color .2s ease, box-shadow .2s ease;
+}}
+
+.st-key-navbar button:hover {{
+    background: {p['surface_alt']} !important;
+    color: {p['text']} !important;
+}}
+
+/* A página ativa é renderizada como botão primary (ver app.py). */
+.st-key-navbar [data-testid="stBaseButton-primary"] {{
+    background: linear-gradient(120deg, {p['neon']} 0%, {p['purple']} 100%) !important;
+    color: {p['bg']} !important;
+    box-shadow: 0 6px 18px {p['neon']}44;
+}}
+
+.st-key-navbar [data-testid="stBaseButton-primary"] * {{
+    color: {p['bg']} !important;
+}}
+
 /* ---------- Cabeçalho ---------- */
 .app-header {{
     display: flex;
@@ -177,6 +226,20 @@ h1, h2, h3, h4, .kpi-value {{
     border-radius: 16px;
     padding: 4px;
     box-shadow: 0 2px 14px rgba(0, 0, 0, 0.35);
+}}
+
+/* Variante "ajustada ao conteúdo": tabelas de poucas colunas (ex.: mês +
+   total) ficam com a largura do próprio conteúdo e centralizadas, em vez
+   de esticadas de ponta a ponta com um vazio enorme entre as colunas. */
+.styled-table-wrapper--fit {{
+    width: fit-content;
+    max-width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+}}
+
+.styled-table-wrapper--fit table.ppc-table {{
+    min-width: 0;
 }}
 
 .ppc-table-scroll {{
@@ -358,12 +421,9 @@ div[data-testid="stDialog"] div[role="dialog"] {{
 /* Escopo pela classe st-key-<key> que o Streamlit aplica no container do
    widget — evita vazar estilo para os demais botões do app. */
 /* Uma key por página (ppc_ = Chamados, rep_ = Reposições), já que a mesma
-   key não pode ser reusada entre widgets. O botão mora na sidebar, logo
-   abaixo do "Carregar outro arquivo" — a margem apenas separa os dois. */
-.st-key-ppc_analytics_btn,
-.st-key-rep_analytics_btn {{
-    margin-top: 10px;
-}}
+   key não pode ser reusada entre widgets. O botão fica na barra de filtros
+   do topo, ao lado do "Carregar outro arquivo" — sem margem extra, para
+   não desalinhar da base dos campos da mesma linha. */
 .st-key-ppc_analytics_btn button,
 .st-key-rep_analytics_btn button {{
     background: linear-gradient(120deg, {p['surface']} 0%, {p['surface_alt']} 100%) !important;

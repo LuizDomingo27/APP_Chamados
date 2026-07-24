@@ -220,3 +220,6 @@ __marimo__/
 # Banco de dados SQLite — NÃO ignorar ajustes.db (precisa ir no repositório)
 # db.sqlite3 já está listado acima (Django default), mas nosso arquivo é outro:
 !ajustes.db
+
+# Cache local do último arquivo enviado em cada página (services/upload_cache.py)
+.cache_uploads/
