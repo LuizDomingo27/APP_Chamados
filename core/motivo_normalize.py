@@ -32,8 +32,12 @@ MOTIVO_NAO_ENVIADO_GUARARAPES = "Material não enviado pela Guararapes"
 MOTIVO_INSUFICIENTE = "Quantidade insuficiente para terminar a ordem"
 MOTIVO_DEFEITO = "Material com defeito"
 MOTIVO_DIVERGENTE = "Material diferente do especificado na ordem"
-MOTIVO_ERRO_FABRICACAO = "Erro no processo de fabricação"
+# Erro da oficina, erro operacional e erro no processo de fabricação são o
+# mesmo caso na prática (a falha aconteceu dentro da oficina), então todos
+# caem num rótulo único. O corte fica de fora: é setor próprio, e juntá-lo
+# à oficina esconderia de quem responde pela falha.
 MOTIVO_ERRO_OFICINA = "Erro operacional da oficina"
+MOTIVO_ERRO_CORTE = "Erro no setor de corte"
 MOTIVO_REPROCESSO = "Reprocesso de ordem"
 MOTIVO_EXTRAVIADO = "Material extraviado"
 MOTIVO_ERRO_CADASTRO = "Erro de cadastro"
@@ -65,21 +69,25 @@ _REGRAS: list[tuple[str, re.Pattern[str]]] = [
     ),
     (MOTIVO_EXTRAVIADO, re.compile(r"EXTRAVIAD")),
     (MOTIVO_ERRO_CADASTRO, re.compile(r"CADASTRO")),
+    # O corte vem antes da oficina: "erro no processo de corte" casaria com
+    # "ERRO N[OA] PROC" da regra genérica se a ordem fosse invertida.
+    (
+        MOTIVO_ERRO_CORTE,
+        re.compile(
+            r"ERRO\s+N[OA]\s+CORTE|ERRO\s+DE\s+CORTE|DEFEITO\s+NO\s+CORTE"
+            r"|PROBLEMAS?\s+(?:DE|NO|NAS|NOS)\s+CORTE|CORTE\s+DIVERGENTE"
+            r"|(?:PROCESSO|SETOR)\s+DE\s+CORTE|CORTAD[OA]S?\s+ERRAD"
+            r"|A[SC]SIMETRIC|ACIMETRIC|ENTRADA\s+DE\s+FACA|BOCADA\s+RASA"
+        ),
+    ),
     (
         MOTIVO_ERRO_OFICINA,
         re.compile(
             r"ERRO\s+D[AE]\s+OFICINA|ERRO\s+OPERACIONAL|FEITO\s+ERRADO|FEIRO\s+"
             r"|LINHA\s+ERRADA|COSTURAD[OA]\s+COM\s+LINHA|PERDA\s+NA\s+|PERCA\b"
             r"|DANIFICAD[AO]S?\s+(?:NA|NO)\s+(?:PROCESSO|PRODUCAO|COSTURA)"
-        ),
-    ),
-    (
-        MOTIVO_ERRO_FABRICACAO,
-        re.compile(
-            r"ERRO\s+N[OA]\s+PROC|ERRO\s+N[OA]\s+CORTE|ERRO\s+DE\s+CORTE|PROCSSO"
-            r"|PROCESSO\s+DE\s+FABRICAC|PROBLEMAS?\s+(?:DE|NO|NAS|NOS)\s+CORTE"
-            r"|CORTE\s+DIVERGENTE|A[SC]SIMETRIC|ACIMETRIC|ENTRADA\s+DE\s+FACA"
-            r"|BOCADA\s+RASA|DEFEITO\s+NO\s+CORTE|FALHA\s+DE\s+TECIDO"
+            r"|ERRO\s+N[OA]\s+PROC|PROCSSO|PROCESSO\s+DE\s+FABRICAC"
+            r"|FALHA\s+DE\s+TECIDO"
         ),
     ),
     (
