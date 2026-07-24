@@ -26,9 +26,10 @@ from core.text_normalize import normalize_text_key
 MOTIVO_NAO_INFORMADO = "Não informado"
 
 # Motivos canônicos — todo texto livre é reduzido a um destes rótulos.
+# Todo material que não chegou à oficina — citando ou não a Guararapes —
+# é a mesma causa de negócio, então usa um rótulo único.
 MOTIVO_NAO_ENVIADO_GUARARAPES = "Material não enviado pela Guararapes"
 MOTIVO_INSUFICIENTE = "Quantidade insuficiente para terminar a ordem"
-MOTIVO_NAO_ENVIADO = "Material não enviado"
 MOTIVO_DEFEITO = "Material com defeito"
 MOTIVO_DIVERGENTE = "Material diferente do especificado na ordem"
 MOTIVO_ERRO_FABRICACAO = "Erro no processo de fabricação"
@@ -113,8 +114,11 @@ _REGRAS: list[tuple[str, re.Pattern[str]]] = [
             r"|QUANTIDADE\s+(?:QUE\s+VEIO|RECEBIDA)|MENOR\s+QUE"
         ),
     ),
+    # Mesma causa da primeira regra, só que sem citar a Guararapes no texto.
+    # Fica aqui no fim de propósito: quando a oficina escreve "faltou" junto
+    # com "não veio", o que interessa medir é a insuficiência.
     (
-        MOTIVO_NAO_ENVIADO,
+        MOTIVO_NAO_ENVIADO_GUARARAPES,
         re.compile(
             r"N[AÃ]O\s+(?:FOI\s+|FORAM\s+)?ENVIAD|N[AÃ]O\s+ENVIAND|N[AÃ]O\s+VEIO"
             r"|N[AÃ]O\s+VIERAM|N[AÃ]O\s+VENHO|NAO\s+VEIO|N[AÃ]O\s+RECEB|N[AÃ]O\s+ENCONTRAM"

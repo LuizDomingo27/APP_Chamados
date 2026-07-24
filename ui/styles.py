@@ -461,5 +461,16 @@ div[data-testid="stDialog"] div[role="dialog"] {{
     background: {p['neon']};
     display: inline-block;
 }}
+
+/* Legenda de gráfico centralizada — usada sobre a rosca, cujo conteúdo
+   é radial e fica desalinhado com um texto encostado à esquerda. */
+.chart-caption {{
+    font-family: 'Sora', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    color: {p['text_muted']};
+    text-align: center;
+    margin: 0 0 4px 0;
+}}
 </style>
 """

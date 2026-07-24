@@ -43,6 +43,12 @@ def render_section_title(title: str) -> None:
     )
 
 
+def render_chart_caption(text: str) -> None:
+    """Legenda centralizada acima de um gráfico. Existe para a rosca:
+    st.caption alinha à esquerda, o que destoa de um gráfico radial."""
+    st.markdown(f'<p class="chart-caption">{text}</p>', unsafe_allow_html=True)
+
+
 def render_kpi_card(
     label: str,
     value: int | str,

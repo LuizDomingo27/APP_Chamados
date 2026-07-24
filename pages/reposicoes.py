@@ -64,6 +64,7 @@ from ui.charts import (
 )
 from ui.components import (
     render_analytics_group,
+    render_chart_caption,
     render_destaque_card,
     render_dropdown_all,
     render_header,
@@ -373,7 +374,7 @@ def _render_dashboard(df) -> None:
             )
         with col_rosca:
             ultimos_meses = agregado_mes.tail(3)
-            st.caption(f"Últimos {len(ultimos_meses)} meses")
+            render_chart_caption(f"Últimos {len(ultimos_meses)} meses")
             # O diâmetro da rosca é limitado pela MENOR dimensão do
             # container — alargar a coluna sozinha não aumentaria o círculo,
             # por isso a altura sobe junto com a largura.
