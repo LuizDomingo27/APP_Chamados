@@ -21,27 +21,30 @@ Um menu de navegação aparece na barra lateral para trocar entre as duas págin
 
 ```
 APP_PPCHAMADO/
-├── app.py                        # Ponto de entrada — só define a navegação (st.navigation)
+├── app.py                        # Ponto de entrada — navegação em rail lateral (st.navigation)
 ├── pages/
 │   ├── chamados.py                # Página de Chamados (upload → services → UI)
 │   └── reposicoes.py              # Página de Reposições (upload → services → UI)
 ├── core/
 │   ├── config.py                  # Constantes, nomes de coluna, paleta de cores
 │   ├── text_normalize.py          # Normalização de texto p/ comparação/agrupamento
-│   └── utils.py                   # Helpers genéricos (select_all_popover, formatação)
+│   ├── motivo_normalize.py        # Reduz o motivo digitado a um rótulo canônico
+│   ├── materia_prima_normalize.py # Extrai a linha de matéria-prima do nome da tarefa
+│   └── utils.py                   # Helpers genéricos (formatação de número/data, cor)
 ├── services/                      # Lógica pura — sem import de streamlit
 │   ├── data_loader.py              # Leitura/validação do Excel (compartilhado)
 │   ├── filter_service.py           # Filtros de Chamados (data, nº chamado, oficina)
 │   ├── parser_service.py           # Regex de Chamados + canonicalização de oficinas (compartilhada)
 │   ├── kpi_service.py              # KPIs genéricos, reaproveitados pelas duas páginas
-│   ├── export_service.py           # Excel exportável (Chamados e Reposições)
+│   ├── material_service.py         # Pódio de materiais: linha de matéria-prima e parte da peça
 │   ├── reposicao_parser_service.py # Extrai nº/oficina/ordem de produção/parte da peça/motivo
 │   ├── reposicao_filter_service.py # Filtros de Reposições (data, nº reposição, oficina)
 │   └── reposicao_kpi_service.py    # KPIs específicos: tendência semanal/mensal, tempo de
-│                                    # atendimento, ranking de solicitantes, oficinas pendentes
+│                                    # atendimento e oficinas pendentes
 └── ui/
-    ├── styles.py                   # CSS tema light neon cyan-green (compartilhado)
-    ├── components.py               # Cards, header, tabela estilizada (compartilhados)
+    ├── styles.py                   # CSS do tema dark teal/lime (compartilhado)
+    ├── icons.py                     # Ícones de traço em SVG inline (sem emoji)
+    ├── components.py               # Painéis, cards, header, tabela estilizada (compartilhados)
     └── charts.py                   # Gráficos ECharts (compartilhados)
 ```
 

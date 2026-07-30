@@ -15,21 +15,13 @@ from dataclasses import dataclass
 import pandas as pd
 
 from core.config import (
-    COL_CATEGORIA,
     COL_CRIADO_EM,
-    COL_DATA_CONCLUSAO,
-    COL_DIAS_ABERTO,
-    COL_NUM_CHAMADO,
     COL_OFICINA,
-    COL_PRIORIDADE,
     COL_SOLICITACAO,
     COL_STATUS,
-    PRIORIDADE_RANK,
-    STATUS_CONCLUIDA,
     STATUS_EM_ANDAMENTO,
     STATUS_NAO_INICIADO,
     STATUS_ORDER,
-    TOP_N_OFICINAS,
 )
 
 
@@ -98,37 +90,8 @@ def contagem_por_status(df: pd.DataFrame) -> dict[str, int]:
 
 
 # ---------------------------------------------------------------------------
-# Agregações (oficina / categoria)
+# Agregações
 # ---------------------------------------------------------------------------
-def agregado_por_oficina(df: pd.DataFrame) -> pd.DataFrame:
-    """Total de chamados por oficina, ordenado decrescente."""
-    out = (
-        df.groupby(COL_OFICINA, dropna=False)
-        .size()
-        .reset_index(name="Total de Chamados")
-        .sort_values("Total de Chamados", ascending=False)
-        .reset_index(drop=True)
-    )
-    return out
-
-
-def agregado_por_categoria(df: pd.DataFrame) -> pd.DataFrame:
-    """Total de chamados por categoria (setor), ordenado decrescente."""
-    out = (
-        df.groupby(COL_CATEGORIA, dropna=False)
-        .size()
-        .reset_index(name="Total de Chamados")
-        .sort_values("Total de Chamados", ascending=False)
-        .reset_index(drop=True)
-    )
-    return out
-
-
-def ranking_oficinas(df: pd.DataFrame, top_n: int = TOP_N_OFICINAS) -> pd.DataFrame:
-    """Top N oficinas com mais chamados — usado no gráfico de ranking."""
-    return agregado_por_oficina(df).head(top_n)
-
-
 def agregado_por_coluna(df: pd.DataFrame, coluna: str, top_n: int | None = None) -> pd.DataFrame:
     """Total de chamados agrupado por uma coluna categórica genérica,
     ordenado decrescente — usado no gráfico de top tipos de solicitação
@@ -141,45 +104,6 @@ def agregado_por_coluna(df: pd.DataFrame, coluna: str, top_n: int | None = None)
         .reset_index(drop=True)
     )
     return out.head(top_n) if top_n is not None else out
-
-
-# ---------------------------------------------------------------------------
-# Tabela ordenada por prioridade (fila de triagem)
-# ---------------------------------------------------------------------------
-def tabela_ordenada_por_prioridade(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Devolve o DataFrame ordenado pela severidade da prioridade
-    (Urgente -> Importante -> Média) e, dentro de cada prioridade, pelos
-    chamados mais antigos primeiro — simula uma fila de atendimento.
-    """
-    out = df.copy()
-    out["_rank_prioridade"] = out[COL_PRIORIDADE].map(PRIORIDADE_RANK).fillna(99)
-    out = out.sort_values(["_rank_prioridade", COL_CRIADO_EM], ascending=[True, True])
-    return out.drop(columns="_rank_prioridade")
-
-
-def enrich_com_dias_aberto(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Adiciona a coluna 'Dias em Aberto' à fila de prioridade, com todas as
-    linhas preenchidas para o filtro por dias funcionar de forma previsível:
-    - pendentes (Não iniciado / Em andamento): dias desde a criação até hoje;
-    - concluídos: quantos dias o chamado ficou aberto (Data de conclusão -
-      Criado em).
-    Linhas sem data de referência viram <NA> e ficam de fora do filtro.
-    """
-    out = df.copy()
-    agora = pd.Timestamp.now().normalize()
-
-    # Data-fim de referência: hoje para os pendentes, a data de conclusão
-    # para os já concluídos (assim contamos o tempo real que ficaram abertos).
-    fim = pd.Series(agora, index=out.index)
-    if COL_DATA_CONCLUSAO in out.columns:
-        concluido_mask = out[COL_STATUS] == STATUS_CONCLUIDA
-        fim = fim.where(~concluido_mask, out[COL_DATA_CONCLUSAO])
-
-    dias = (fim - out[COL_CRIADO_EM]).dt.days
-    out[COL_DIAS_ABERTO] = dias.clip(lower=0).astype("Int64")
-    return out
 
 
 # ---------------------------------------------------------------------------

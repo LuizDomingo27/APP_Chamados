@@ -1,10 +1,20 @@
+# Tema nativo do Streamlit — mantido em sincronia com core.config.PALETTE.
+# O CSS de ui/styles.py cobre o visual dos componentes custom, mas os
+# widgets nativos (date_input, selectbox, tabs, uploader) leem daqui, e
+# divergência entre os dois é o que faz aparecer "buraco" claro na tela.
 [theme]
 base = "dark"
-primaryColor = "#2DD4BF"
-backgroundColor = "#0E1420"
-secondaryBackgroundColor = "#171F30"
-textColor = "#EAF0F7"
+primaryColor = "#2AE5C8"
+backgroundColor = "#070F17"
+secondaryBackgroundColor = "#0C1822"
+textColor = "#E8F2F7"
 font = "sans serif"
+
+# A sidebar é o rail de navegação (ver app.py) e fica um degrau mais
+# escura que o conteúdo, como na referência.
+[theme.sidebar]
+backgroundColor = "#04090F"
+secondaryBackgroundColor = "#0C1822"
 
 [server]
 headless = true

@@ -2,73 +2,17 @@
 core/utils.py
 
 Funções utilitárias reaproveitáveis em todo o app. Sem regra de negócio
-específica de chamados aqui — apenas helpers genéricos de UI/formatação,
-seguindo o mesmo padrão usado nos outros apps (select_all_popover etc).
+específica de chamados aqui — apenas helpers genéricos de formatação
+(número, data) e de cor. Não importa streamlit: quem desenha é ui/.
 """
 
 from __future__ import annotations
 
-from typing import Iterable, Sequence
+from typing import Iterable
 
 import pandas as pd
-import streamlit as st
 
 from core.config import DATE_FORMAT_BR
-
-
-def select_all_popover(
-    label: str,
-    options: Sequence[str],
-    key: str,
-    icon: str = "🔎",
-) -> list[str]:
-    """
-    Renderiza um popover com multiselect + atalhos "Selecionar todos" /
-    "Limpar". Mantém o estado em st.session_state para persistir a escolha
-    entre reruns, evitando o "poluído" visual do multiselect padrão.
-
-    Retorna a lista de valores selecionados.
-    """
-    state_key = f"_select_all_{key}"
-    if state_key not in st.session_state:
-        st.session_state[state_key] = list(options)
-
-    # Remove da seleção qualquer valor que não exista mais nas opções atuais
-    st.session_state[state_key] = [
-        v for v in st.session_state[state_key] if v in options
-    ]
-
-    selected = st.session_state[state_key]
-    total = len(options)
-    qtd = len(selected)
-
-    button_label = (
-        f"{icon} {label}: Todas ({total})"
-        if qtd == total
-        else f"{icon} {label}: {qtd}/{total}"
-    )
-
-    with st.popover(button_label, use_container_width=True):
-        col_a, col_b = st.columns(2)
-        with col_a:
-            if st.button("Selecionar todos", key=f"{key}_all", width="stretch"):
-                st.session_state[state_key] = list(options)
-                st.rerun()
-        with col_b:
-            if st.button("Limpar", key=f"{key}_clear", width="stretch"):
-                st.session_state[state_key] = []
-                st.rerun()
-
-        chosen = st.multiselect(
-            "Buscar / refinar",
-            options=options,
-            default=st.session_state[state_key],
-            key=f"{key}_multiselect",
-            label_visibility="collapsed",
-        )
-        st.session_state[state_key] = chosen
-
-    return st.session_state[state_key]
 
 
 def format_date_br(value) -> str:
@@ -101,3 +45,43 @@ def safe_unique_sorted(values: Iterable) -> list[str]:
     """Retorna valores únicos, não nulos, ordenados — para popular filtros."""
     series = pd.Series(list(values)).dropna()
     return sorted(series.astype(str).unique().tolist())
+
+
+# ---------------------------------------------------------------------------
+# Cor
+# ---------------------------------------------------------------------------
+_FALLBACK_HEX = "#2AE5C8"
+
+
+def hex_to_rgb(color: str) -> tuple[int, int, int]:
+    """
+    Converte "#RRGGBB" (ou "#RGB") na tripla RGB.
+
+    Cor malformada NÃO levanta exceção: cai no teal primário. As cores
+    entram na UI por interpolação de string (CSS e opções de gráfico), onde
+    um ValueError derrubaria a tela inteira por causa de um token com erro
+    de digitação — desproporcional para um detalhe estético, que aliás fica
+    visível na tela quando o fallback entra.
+    """
+    texto = str(color or "").strip().lstrip("#")
+    if len(texto) == 3:
+        texto = "".join(ch * 2 for ch in texto)
+    if len(texto) != 6:
+        texto = _FALLBACK_HEX.lstrip("#")
+    try:
+        return int(texto[0:2], 16), int(texto[2:4], 16), int(texto[4:6], 16)
+    except ValueError:
+        base = _FALLBACK_HEX.lstrip("#")
+        return int(base[0:2], 16), int(base[2:4], 16), int(base[4:6], 16)
+
+
+def rgba(color: str, alpha: float) -> str:
+    """Monta "rgba(r,g,b,a)" a partir de um hex da paleta. `alpha` fora da
+    faixa 0-1 é limitado, em vez de gerar um CSS inválido."""
+    r, g, b = hex_to_rgb(color)
+    try:
+        a = float(alpha)
+    except (TypeError, ValueError):
+        a = 1.0
+    a = max(0.0, min(1.0, a))
+    return f"rgba({r}, {g}, {b}, {a:g})"

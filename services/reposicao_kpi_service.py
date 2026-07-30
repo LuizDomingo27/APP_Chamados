@@ -5,14 +5,12 @@ KPIs específicos do módulo de Reposições. As contas que já são
 genéricas o suficiente (dependem só dos nomes de coluna de core.config,
 sem nada "de chamado" embutido) são reaproveitadas direto de
 services.kpi_service: total_chamados, contagem_por_status,
-agregado_por_oficina, agregado_por_categoria, ranking_oficinas,
-tendencia_diaria, tabela_ordenada_por_prioridade e total_pendentes.
+agregado_por_coluna, tendencia_diaria, calcular_analise e total_pendentes.
 
 Este módulo cobre o que é específico de Reposições:
 - tendência semanal/mensal (o pedido cobre dia/semana/mês, o serviço
   original só tinha tendência diária);
 - tempo de atendimento (Concluído em - Criado em);
-- ranking de quem mais solicita reposições;
 - oficinas com reposição em aberto e há quantos dias esperam;
 - destaques (reaproveita o dataclass Destaques, só troca a 3ª métrica
   de "Tipo de Solicitação" para "Categoria", que é o campo equivalente
@@ -29,7 +27,6 @@ from core.config import (
     COL_CATEGORIA,
     COL_CONCLUIDO_EM,
     COL_CRIADO_EM,
-    COL_CRIADO_POR,
     COL_DIAS_ABERTO,
     COL_OFICINA,
     COL_STATUS,
@@ -102,22 +99,6 @@ def calcular_analise_reposicao(df: pd.DataFrame) -> ResumoAnalitico:
     Chamados — só o campo "tipo" muda: na planilha de Reposições quem faz
     esse papel é a Categoria, não o "Tipo de Solicitação"."""
     return calcular_analise(df, coluna_tipo=COL_CATEGORIA)
-
-
-# ---------------------------------------------------------------------------
-# Quem mais solicita
-# ---------------------------------------------------------------------------
-def ranking_solicitantes(df: pd.DataFrame, top_n: int = 10) -> pd.DataFrame:
-    """Ranking de quem mais solicita reposições (coluna 'Criado por')."""
-    out = (
-        df.groupby(COL_CRIADO_POR, dropna=False)
-        .size()
-        .reset_index(name="Total de Chamados")
-        .sort_values("Total de Chamados", ascending=False)
-        .head(top_n)
-        .reset_index(drop=True)
-    )
-    return out
 
 
 # ---------------------------------------------------------------------------

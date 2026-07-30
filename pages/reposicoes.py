@@ -43,6 +43,12 @@ from services.kpi_service import (
     total_chamados,
     total_pendentes,
 )
+from services.material_service import (
+    TOP_N_MATERIAIS,
+    enrich_com_materia_prima,
+    top_materias_primas,
+    top_partes_peca,
+)
 from services.reposicao_filter_service import apply_all_filters_reposicao, semana_options
 from services.reposicao_kpi_service import (
     calcular_analise_reposicao,
@@ -63,23 +69,30 @@ from ui.charts import (
     render_echarts,
 )
 from ui.components import (
+    panel,
     render_analytics_group,
     render_chart_caption,
     render_destaque_card,
     render_dropdown_all,
     render_header,
     render_kpi_card,
+    render_rank_list,
     render_section_title,
     render_status_kpis,
     render_styled_dataframe,
 )
-# O CSS custom é injetado uma única vez em app.py, antes da navbar.
+# O CSS custom é injetado uma única vez em app.py, antes do rail.
 
 # Chaves de estado próprias desta página (prefixo "rep_"), independentes
 # das usadas em Chamados ("ppc_") — os dois arquivos podem ficar
 # carregados ao mesmo tempo, cada um na sua página.
 _FILE_STATE_KEY = "rep_file_bytes"
 _FILE_NAME_KEY = "rep_file_name"
+
+# Sinaliza que o cache em disco falhou no último upload (ver save_upload):
+# o aviso é exibido na barra de filtros, já que a tela de upload sai do ar
+# no rerun seguinte ao envio.
+_CACHE_WARN_KEY = "rep_cache_warn"
 
 # Identificador desta página no cache em disco de uploads (ver
 # services/upload_cache.py) — separado do slot de Chamados, porque cada
@@ -104,17 +117,20 @@ _REGRAS_OFICINA = canonicalizacao_fingerprint(
 def _load_and_enrich(file_bytes: bytes, regras_oficina: str):
     df = load_dados_consolidados(io.BytesIO(file_bytes))
     df = enrich_with_parsed_fields_reposicao(df)
-    return enrich_com_indicadores_temporais(df)
+    df = enrich_com_indicadores_temporais(df)
+    # A linha de matéria-prima depende de "Parte da peça" já extraída pelo
+    # parser, então entra por último no pipeline.
+    return enrich_com_materia_prima(df)
 
 
 def _render_upload_screen() -> None:
     render_header(
         title="Central de Acompanhamento de Reposições",
         subtitle="Faça upload da exportação de Reposições (.xlsx) para começar",
-        icon="🧵",
+        icon="spool",
     )
     st.info(
-        "📤 Envie o arquivo Excel exportado (aba **Dados Consolidados**) para "
+        "Envie o arquivo Excel exportado (aba **Dados Consolidados**) para "
         "gerar o dashboard de reposições das oficinas de costura.",
     )
     uploaded = st.file_uploader(
@@ -125,11 +141,14 @@ def _render_upload_screen() -> None:
     if uploaded is not None:
         st.session_state[_FILE_STATE_KEY] = uploaded.getvalue()
         st.session_state[_FILE_NAME_KEY] = uploaded.name
-        save_upload(_CACHE_SLOT, uploaded.name, uploaded.getvalue())
+        if not save_upload(_CACHE_SLOT, uploaded.name, uploaded.getvalue()):
+            # O dashboard funciona normalmente nesta sessão; só a
+            # reabertura automática após F5 é que não vai acontecer.
+            st.session_state[_CACHE_WARN_KEY] = True
         st.rerun()
 
 
-@st.dialog("📊 Visão Analítica", width="large")
+@st.dialog("Visão Analítica", width="large")
 def _dialog_analise(resumo) -> None:
     """Pop-up da área analítica. Só exibe — todos os números já vêm
     calculados de reposicao_kpi_service.calcular_analise_reposicao()."""
@@ -158,15 +177,15 @@ def _dialog_analise(resumo) -> None:
             {"label": "Por Dia", "value": format_decimal(resumo.media_dia),
              "meta": f"em {resumo.qtd_dias} dia(s)"},
         ],
-        accent=PALETTE["purple"],
+        accent=PALETTE["lime"],
     )
 
     render_analytics_group(
         "Destaques",
         [
-            {"label": "🏭 Oficina com mais solicitações", "value": resumo.oficina_top_nome,
+            {"label": "Oficina com mais solicitações", "value": resumo.oficina_top_nome,
              "meta": f"{format_int(resumo.oficina_top_qtd)} reposição(ões)", "texto": True},
-            {"label": "🏷️ Categoria mais frequente", "value": resumo.tipo_top_nome,
+            {"label": "Categoria mais frequente", "value": resumo.tipo_top_nome,
              "meta": f"{format_int(resumo.tipo_top_qtd)} reposição(ões)", "texto": True},
         ],
         accent=PALETTE["warning"],
@@ -175,11 +194,11 @@ def _dialog_analise(resumo) -> None:
 
 def _render_filtros(df):
     """Barra de filtros do topo — mesma estrutura da página de Chamados.
-    Substitui a antiga sidebar, já que a navegação virou navbar."""
+    Ficam aqui, e não na sidebar, que é o rail de navegação (ver app.py)."""
     min_date = df[COL_CRIADO_EM].min()
     max_date = df[COL_CRIADO_EM].max()
 
-    with st.expander("🔍 Filtros", expanded=True):
+    with st.expander("Filtros", expanded=True):
         # Campos e botões na MESMA linha; vertical_alignment="bottom" alinha
         # os botões (sem rótulo) pela base dos campos (que têm rótulo acima).
         c_periodo, c_semana, c_oficina, c_analise, c_reset = st.columns(
@@ -196,24 +215,24 @@ def _render_filtros(df):
             )
         with c_semana:
             semanas_selecionadas = render_dropdown_all(
-                "🗓️ Semana(s)", semana_options(df), "_select_all_semanas_filter_rep"
+                "Semana(s)", semana_options(df), "_select_all_semanas_filter_rep"
             )
         with c_oficina:
             oficinas_selecionadas = render_dropdown_all(
-                "🏭 Oficina(s)",
+                "Oficina(s)",
                 safe_unique_sorted(df[COL_OFICINA]),
                 "_select_all_oficinas_filter_rep",
             )
 
         with c_analise:
             abrir_analise = st.button(
-                "📊 Visão Analítica",
+                "Visão Analítica",
                 width="stretch",
                 key="rep_analytics_btn",
                 help="Abre o resumo analítico do período filtrado",
             )
         with c_reset:
-            if st.button("🔄 Carregar outro arquivo", width="stretch", key="rep_reset"):
+            if st.button("Carregar outro arquivo", width="stretch", key="rep_reset"):
                 st.session_state.pop(_FILE_STATE_KEY, None)
                 st.session_state.pop(_FILE_NAME_KEY, None)
                 clear_upload(_CACHE_SLOT)
@@ -222,7 +241,13 @@ def _render_filtros(df):
 
         nome_arquivo = st.session_state.get(_FILE_NAME_KEY)
         if nome_arquivo:
-            st.caption(f"📄 Arquivo carregado: **{nome_arquivo}**")
+            st.caption(f"Arquivo carregado: **{nome_arquivo}**")
+        if st.session_state.get(_CACHE_WARN_KEY):
+            st.caption(
+                "Não foi possível guardar o arquivo em cache local — o "
+                "dashboard funciona normalmente, mas será necessário enviar "
+                "a planilha de novo após atualizar a página."
+            )
 
     start, end = (date_range if isinstance(date_range, tuple) and len(date_range) == 2
                   else (min_date.date(), max_date.date()))
@@ -243,7 +268,7 @@ def _render_dashboard(df) -> None:
         render_header(
             title="Central de Acompanhamento de Reposições",
             subtitle=f"{total_chamados(filtrado)} reposição(ões) no filtro atual",
-            icon="🧵",
+            icon="spool",
         )
 
     if filtrado.empty:
@@ -254,10 +279,19 @@ def _render_dashboard(df) -> None:
         _dialog_analise(calcular_analise_reposicao(filtrado))
 
     # ---------------- Totais gerais ----------------
+    # Seções que são SÓ cards ficam soltas sobre o fundo (cada card já é uma
+    # caixa, e embrulhá-los num painel criaria caixa dentro de caixa); as
+    # seções de gráfico/tabela é que entram em painel — mesma divisão do
+    # dashboard de referência. Ver ui.components.panel.
     render_section_title("Visão Geral")
     col1, col2 = st.columns([1, 3])
     with col1:
-        render_kpi_card("Total de Reposições", total_chamados(filtrado), subtitle="no período filtrado")
+        render_kpi_card(
+            "Total de Reposições",
+            total_chamados(filtrado),
+            subtitle="no período filtrado",
+            icon="spool",
+        )
     with col2:
         status_counts = contagem_por_status(filtrado)
         render_status_kpis(status_counts)
@@ -272,7 +306,8 @@ def _render_dashboard(df) -> None:
             "Reposições Pendentes",
             qtd_pendentes,
             subtitle="aguardando ou em andamento",
-            accent="#FF6B6B",
+            accent=PALETTE["pink"],
+            icon="clock",
         )
     with p2:
         if not oficinas_pendentes_df.empty:
@@ -285,17 +320,19 @@ def _render_dashboard(df) -> None:
                     "Oficinas com Pendência",
                     qtd_oficinas_pendentes,
                     subtitle="aguardando reposição",
-                    accent="#FFB020",
+                    accent=PALETTE["amber"],
+                    icon="factory",
                 )
             with sub2:
                 render_kpi_card(
                     "Espera Mais Longa",
                     f"{dias_max} dia(s)",
                     subtitle=f"{oficina_mais_antiga}",
-                    accent="#FFB020",
+                    accent=PALETTE["amber"],
+                    icon="calendar",
                 )
         else:
-            st.success("Nenhuma reposição pendente no filtro atual. ✅")
+            st.success("Nenhuma reposição pendente no filtro atual.")
 
     # ---------------- Destaques ----------------
     render_section_title("Destaques do Período")
@@ -303,21 +340,27 @@ def _render_dashboard(df) -> None:
     d1, d2, d3 = st.columns(3)
     with d1:
         render_destaque_card(
-            "📅 Dia com mais solicitações",
+            "Dia com mais solicitações",
             destaques.dia_top_data,
             f"{destaques.dia_top_qtd} reposição(ões)",
+            icon="calendar",
+            accent=PALETTE["neon"],
         )
     with d2:
         render_destaque_card(
-            "🏭 Oficina que mais solicita",
+            "Oficina que mais solicita",
             destaques.oficina_top_nome,
             f"{destaques.oficina_top_qtd} reposição(ões)",
+            icon="factory",
+            accent=PALETTE["lime"],
         )
     with d3:
         render_destaque_card(
-            "🏷️ Categoria mais comum",
+            "Categoria mais comum",
             destaques.solicitacao_top_nome,
             f"{destaques.solicitacao_top_qtd} reposição(ões)",
+            icon="tag",
+            accent=PALETTE["amber"],
         )
 
     # ---------------- Tempo de atendimento ----------------
@@ -326,34 +369,73 @@ def _render_dashboard(df) -> None:
     if tempo.qtd_amostras > 0:
         t1, t2 = st.columns(2)
         with t1:
-            render_kpi_card("Média", f"{tempo.media_dias} dia(s)", subtitle="tempo médio de atendimento")
+            render_kpi_card(
+                "Média",
+                f"{tempo.media_dias} dia(s)",
+                subtitle="tempo médio de atendimento",
+                icon="scales",
+            )
         with t2:
-            render_kpi_card("Mais demorado", f"{tempo.max_dias} dia(s)", subtitle="maior tempo registrado")
+            render_kpi_card(
+                "Mais demorado",
+                f"{tempo.max_dias} dia(s)",
+                subtitle="maior tempo registrado",
+                accent=PALETTE["amber"],
+                icon="hourglass",
+            )
         st.caption(f"Calculado sobre {tempo.qtd_amostras} reposição(ões) já concluída(s) no filtro atual.")
     else:
         st.info("Ainda não há reposições concluídas no filtro atual para calcular o tempo de atendimento.")
 
+    # ---------------- Materiais mais solicitados ----------------
+    # Dois pódios lado a lado porque respondem a perguntas diferentes: a
+    # LINHA diz de que matéria-prima é a ordem que gerou a reposição
+    # (negociação com a Guararapes), e a PARTE diz o que exatamente a
+    # oficina pediu de novo (chão de fábrica). Ver services/material_service.
+    col_linha, col_parte = st.columns(2, gap="medium")
+    with col_linha:
+        with panel(
+            f"Top {TOP_N_MATERIAIS} Linhas de Matéria-Prima",
+            key="rep-top-materia-prima",
+        ):
+            render_rank_list(
+                top_materias_primas(filtrado),
+                vazio=(
+                    "Nenhuma reposição do filtro atual identifica a linha de "
+                    "matéria-prima no nome da tarefa."
+                ),
+            )
+    with col_parte:
+        with panel(
+            f"Top {TOP_N_MATERIAIS} Partes da Peça Solicitadas",
+            key="rep-top-parte-peca",
+        ):
+            render_rank_list(
+                top_partes_peca(filtrado),
+                vazio="Nenhuma parte da peça informada no filtro atual.",
+            )
+
     # ---------------- Tendência (dia / semana / mês) ----------------
-    render_section_title("Tendência de Reposições")
-    tab_dia, tab_semana, tab_mes = st.tabs(["Por Dia", "Por Semana", "Por Mês"])
-    with tab_dia:
-        trend_df = tendencia_diaria(filtrado)
-        if not trend_df.empty:
-            render_echarts(build_trend_line_option(trend_df), height=360)
-    with tab_semana:
-        semana_df = tendencia_semanal(filtrado)
-        if not semana_df.empty:
-            render_echarts(build_categoria_bar_option(semana_df, sort_ascending=False, show_trend=True), height=360)
-    with tab_mes:
-        mes_df = tendencia_mensal(filtrado)
-        if not mes_df.empty:
-            render_echarts(build_categoria_bar_option(mes_df, sort_ascending=False, show_trend=True), height=360)
+    with panel("Tendência de Reposições", key="rep-tendencia"):
+        tab_dia, tab_semana, tab_mes = st.tabs(["Por Dia", "Por Semana", "Por Mês"])
+        with tab_dia:
+            trend_df = tendencia_diaria(filtrado)
+            if not trend_df.empty:
+                render_echarts(build_trend_line_option(trend_df), height=360)
+        with tab_semana:
+            semana_df = tendencia_semanal(filtrado)
+            if not semana_df.empty:
+                render_echarts(build_categoria_bar_option(semana_df, sort_ascending=False, show_trend=True), height=360)
+        with tab_mes:
+            mes_df = tendencia_mensal(filtrado)
+            if not mes_df.empty:
+                render_echarts(build_categoria_bar_option(mes_df, sort_ascending=False, show_trend=True), height=360)
 
     # ---------------- Top Motivos de Reposição ----------------
-    render_section_title(f"Top {TOP_N_SOLICITACOES} Motivos de Reposição")
     motivo_df = agregado_por_coluna(filtrado, COL_MOTIVO, TOP_N_SOLICITACOES)
     if not motivo_df.empty:
-        render_echarts(build_categoria_bar_option(motivo_df, sort_ascending=True), height=380)
+        with panel(f"Top {TOP_N_SOLICITACOES} Motivos de Reposição", key="rep-top-motivos"):
+            render_echarts(build_categoria_bar_option(motivo_df, sort_ascending=True), height=380)
 
     # ---------------- Fechamento: total por mês ----------------
     # Fecha a página com o consolidado mensal: a tabela traz a série
@@ -361,31 +443,32 @@ def _render_dashboard(df) -> None:
     # que é o horizonte usado na conversa do dia a dia.
     agregado_mes = tendencia_mensal(filtrado)
     if not agregado_mes.empty:
-        render_section_title("Reposições por Mês")
-        # A rosca fica com 70% da linha: a tabela tem só 2 colunas estreitas
-        # e não precisa de mais que o restante, enquanto o gráfico ganha o
-        # espaço necessário para os rótulos externos das fatias respirarem.
-        col_tabela, col_rosca = st.columns([3, 7], gap="medium")
-        with col_tabela:
-            render_styled_dataframe(
-                agregado_mes.rename(columns={"Total de Chamados": "Total de Reposições"}),
-                height=460,
-                fit_content=True,
-            )
-        with col_rosca:
-            ultimos_meses = agregado_mes.tail(3)
-            render_chart_caption(f"Últimos {len(ultimos_meses)} meses")
-            # O diâmetro da rosca é limitado pela MENOR dimensão do
-            # container — alargar a coluna sozinha não aumentaria o círculo,
-            # por isso a altura sobe junto com a largura.
-            render_echarts(
-                build_donut_option(
-                    ultimos_meses,
-                    titulo_centro="reposições",
-                    unidade="reposição(ões)",
-                ),
-                height=460,
-            )
+        with panel("Reposições por Mês", key="rep-por-mes"):
+            # A rosca fica com 70% da linha: a tabela tem só 2 colunas
+            # estreitas e não precisa de mais que o restante, enquanto o
+            # gráfico ganha o espaço necessário para os rótulos externos das
+            # fatias respirarem.
+            col_tabela, col_rosca = st.columns([3, 7], gap="medium")
+            with col_tabela:
+                render_styled_dataframe(
+                    agregado_mes.rename(columns={"Total de Chamados": "Total de Reposições"}),
+                    height=460,
+                    fit_content=True,
+                )
+            with col_rosca:
+                ultimos_meses = agregado_mes.tail(3)
+                render_chart_caption(f"Últimos {len(ultimos_meses)} meses")
+                # O diâmetro da rosca é limitado pela MENOR dimensão do
+                # container — alargar a coluna sozinha não aumentaria o
+                # círculo, por isso a altura sobe junto com a largura.
+                render_echarts(
+                    build_donut_option(
+                        ultimos_meses,
+                        titulo_centro="reposições",
+                        unidade="reposição(ões)",
+                    ),
+                    height=460,
+                )
 
 
 def main() -> None:
@@ -409,7 +492,23 @@ def main() -> None:
         st.error(error_msg)
         return
 
-    df = _load_and_enrich(file_bytes, _REGRAS_OFICINA)
+    # A validação acima só confere a existência da aba. O parsing em si
+    # (colunas ausentes, tipo inesperado numa célula) ainda pode falhar, e
+    # sem este bloco o usuário recebia um traceback no lugar da tela. A
+    # exceção NÃO é engolida: a mensagem real vai para a tela e o detalhe
+    # completo fica num expander para quem for investigar.
+    try:
+        df = _load_and_enrich(file_bytes, _REGRAS_OFICINA)
+    except Exception as exc:  # noqa: BLE001 - fronteira de UI: reporta e segue
+        st.error(
+            "Não foi possível processar a planilha de Reposições: "
+            f"{exc}\n\nConfira se o arquivo é a exportação correta de "
+            "Reposições e tente carregá-lo novamente."
+        )
+        with st.expander("Detalhes técnicos"):
+            st.exception(exc)
+        return
+
     _render_dashboard(df)
 
 

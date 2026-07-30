@@ -17,7 +17,8 @@ import uuid
 import pandas as pd
 import streamlit as st
 
-from core.config import PALETTE
+from core.config import PALETTE, SERIES_COLORS
+from core.utils import rgba
 
 _ECHARTS_CDN = "https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"
 
@@ -28,21 +29,55 @@ _ECHARTS_CDN = "https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"
 # nativa do sistema, sempre disponível, sem depender de rede.
 _CHART_FONT = "'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
 
+# Nome da coluna de valor que todos os builders deste módulo esperam. Os
+# services de KPI produzem esse nome; as páginas só renomeiam para exibição
+# DEPOIS de montar o gráfico.
+_COL_VALOR = "Total de Chamados"
+
 _TOOLTIP_BASE = {
-    "backgroundColor": "rgba(16, 36, 31, 0.92)",
-    "borderColor": PALETTE["neon_soft"],
+    "backgroundColor": rgba(PALETTE["surface_alt"], 0.96),
+    "borderColor": rgba(PALETTE["neon"], 0.45),
     "borderWidth": 1,
-    "borderRadius": 10,
+    "borderRadius": 12,
     "padding": [10, 14],
-    "textStyle": {"color": "#FFFFFF", "fontFamily": _CHART_FONT, "fontSize": 13},
-    "extraCssText": "box-shadow: 0 6px 24px rgba(15,191,159,0.25);",
+    "textStyle": {"color": PALETTE["text"], "fontFamily": _CHART_FONT, "fontSize": 13},
+    "extraCssText": f"box-shadow: 0 8px 28px {rgba(PALETTE['bg_deep'], 0.65)};",
 }
+
+
+def _extrair_serie(df: pd.DataFrame, valor_col: str = _COL_VALOR) -> tuple[list[str], list]:
+    """
+    Extrai (rótulos, valores) no formato que os builders deste módulo usam:
+    primeira coluna = rótulo, `valor_col` = valor.
+
+    Levanta ValueError com a coluna que faltou em vez de deixar estourar um
+    KeyError cru: se um service mudar o nome da coluna, a mensagem já diz
+    onde arrumar — e as páginas transformam isso numa mensagem de erro na
+    tela (ver o try/except em torno do carregamento).
+    """
+    if not isinstance(df, pd.DataFrame):
+        raise ValueError(f"Esperado um DataFrame para o gráfico, recebido {type(df).__name__}.")
+    if valor_col not in df.columns:
+        raise ValueError(
+            f"A coluna '{valor_col}' não existe nos dados do gráfico. "
+            f"Colunas disponíveis: {', '.join(map(str, df.columns)) or '(nenhuma)'}"
+        )
+    if df.empty:
+        return [], []
+    return df.iloc[:, 0].astype(str).tolist(), df[valor_col].tolist()
 
 
 def render_echarts(option: dict, height: int = 380) -> None:
     """Renderiza um dicionário de opções ECharts dentro de um componente HTML."""
     div_id = f"echarts_{uuid.uuid4().hex}"
-    option_json = json.dumps(option, ensure_ascii=False)
+    try:
+        option_json = json.dumps(option, ensure_ascii=False)
+    except (TypeError, ValueError) as exc:
+        # Um valor não serializável (Timestamp, numpy type solto) viraria uma
+        # exceção crua no meio da página. Mostramos o erro no lugar do
+        # gráfico e o resto do dashboard continua utilizável.
+        st.error(f"Não foi possível montar este gráfico: {exc}")
+        return
 
     html = f"""
     <html>
@@ -87,6 +122,15 @@ def render_echarts(option: dict, height: int = 380) -> None:
 
 def build_trend_line_option(trend_df: pd.DataFrame) -> dict:
     """Linha de tendência diária de chamados + linha de referência (média)."""
+    faltando = [
+        col for col in ("Data", "Chamados", "Média do Período")
+        if col not in getattr(trend_df, "columns", [])
+    ]
+    if faltando:
+        raise ValueError(
+            "Dados de tendência sem as colunas esperadas: " + ", ".join(faltando)
+        )
+
     datas = trend_df["Data"].dt.strftime("%d/%m").tolist()
     valores = trend_df["Chamados"].tolist()
     media = float(trend_df["Média do Período"].iloc[0]) if not trend_df.empty else 0
@@ -137,8 +181,8 @@ def build_trend_line_option(trend_df: pd.DataFrame) -> dict:
                         "type": "linear",
                         "x": 0, "y": 0, "x2": 0, "y2": 1,
                         "colorStops": [
-                            {"offset": 0, "color": "rgba(15,191,159,0.35)"},
-                            {"offset": 1, "color": "rgba(15,191,159,0.02)"},
+                            {"offset": 0, "color": rgba(PALETTE["neon"], 0.32)},
+                            {"offset": 1, "color": rgba(PALETTE["neon"], 0.02)},
                         ],
                     }
                 },
@@ -164,57 +208,6 @@ def build_trend_line_option(trend_df: pd.DataFrame) -> dict:
     }
 
 
-def build_oficina_ranking_option(ranking_df: pd.DataFrame) -> dict:
-    """Barra horizontal com o ranking das oficinas com mais chamados."""
-    df_sorted = ranking_df.sort_values("Total de Chamados", ascending=True)
-    nomes = df_sorted.iloc[:, 0].astype(str).tolist()
-    valores = df_sorted["Total de Chamados"].tolist()
-
-    return {
-        "tooltip": {**_TOOLTIP_BASE, "trigger": "axis", "axisPointer": {"type": "shadow"}},
-        "grid": {"left": 10, "right": 30, "top": 10, "bottom": 10, "containLabel": True},
-        "xAxis": {
-            "type": "value",
-            "splitLine": {"show": False},
-            "axisLine": {"show": False},
-            "axisTick": {"show": False},
-            "axisLabel": {"color": PALETTE["text_muted"], "fontFamily": _CHART_FONT},
-        },
-        "yAxis": {
-            "type": "category",
-            "data": nomes,
-            "axisLine": {"show": False},
-            "axisTick": {"show": False},
-            "axisLabel": {"color": PALETTE["text"], "fontFamily": _CHART_FONT, "fontSize": 12},
-        },
-        "series": [
-            {
-                "type": "bar",
-                "data": valores,
-                "barWidth": "55%",
-                "itemStyle": {
-                    "borderRadius": [0, 8, 8, 0],
-                    "color": {
-                        "type": "linear",
-                        "x": 0, "y": 0, "x2": 1, "y2": 0,
-                        "colorStops": [
-                            {"offset": 0, "color": PALETTE["neon_soft"]},
-                            {"offset": 1, "color": PALETTE["neon"]},
-                        ],
-                    },
-                },
-                "label": {
-                    "show": True,
-                    "position": "right",
-                    "color": PALETTE["text"],
-                    "fontFamily": _CHART_FONT,
-                    "fontWeight": 600,
-                },
-            }
-        ],
-    }
-
-
 def build_donut_option(
     dados_df: pd.DataFrame,
     titulo_centro: str = "Total",
@@ -233,19 +226,18 @@ def build_donut_option(
     ``unidade`` é o substantivo usado no tooltip ("chamado(s)",
     "reposição(ões)") — o mesmo gráfico atende as duas páginas.
     """
-    nomes = dados_df.iloc[:, 0].astype(str).tolist()
-    valores = dados_df["Total de Chamados"].tolist()
+    nomes, valores = _extrair_serie(dados_df)
     total = int(sum(valores))
 
-    # Uma cor por fatia, do acento primário ao secundário — poucas fatias
-    # (3 por padrão), então uma lista fixa basta e mantém a ordem
-    # cronológica legível: mês mais antigo no tom mais claro.
-    cores = [PALETTE["purple_soft"], PALETTE["neon_soft"], PALETTE["neon"]]
+    # Uma cor por fatia na sequência canônica da paleta (teal → lime →
+    # amber → slate, ver core.config.SERIES_COLORS): é a mesma ordem da
+    # rosca da referência e mantém a leitura cronológica — mês mais antigo
+    # no teal, mais recente no fim da série.
     data = [
         {
             "name": nome,
             "value": valor,
-            "itemStyle": {"color": cores[i % len(cores)]},
+            "itemStyle": {"color": SERIES_COLORS[i % len(SERIES_COLORS)]},
         }
         for i, (nome, valor) in enumerate(zip(nomes, valores))
     ]
@@ -278,6 +270,10 @@ def build_donut_option(
                 "percentPrecision": 1,
                 "data": data,
                 "itemStyle": {
+                    # A borda das fatias é da cor da SUPERFÍCIE do card (e
+                    # não do fundo da página): a rosca vive dentro de um
+                    # painel, e usar o fundo deixava um vinco escuro visível
+                    # entre as fatias.
                     "borderColor": PALETTE["surface"],
                     "borderWidth": 3,
                     "borderRadius": 6,
@@ -341,13 +337,14 @@ def build_categoria_bar_option(
     acompanhando os mesmos valores das colunas, deixando a variação entre
     os períodos mais fácil de enxergar.
     """
+    if _COL_VALOR not in getattr(categoria_df, "columns", []):
+        raise ValueError(f"A coluna '{_COL_VALOR}' não existe nos dados do gráfico de barras.")
     df_sorted = (
-        categoria_df.sort_values("Total de Chamados", ascending=True)
+        categoria_df.sort_values(_COL_VALOR, ascending=True)
         if sort_ascending
         else categoria_df
     )
-    nomes = df_sorted.iloc[:, 0].astype(str).tolist()
-    valores = df_sorted["Total de Chamados"].tolist()
+    nomes, valores = _extrair_serie(df_sorted)
 
     # Rótulo com o total de cada coluna, acima da barra. É o único rótulo
     # desenhado no gráfico — a variação percentual fica só no tooltip, pois
@@ -374,8 +371,8 @@ def build_categoria_bar_option(
                     "type": "linear",
                     "x": 0, "y": 0, "x2": 0, "y2": 1,
                     "colorStops": [
-                        {"offset": 0, "color": PALETTE["neon"]},
-                        {"offset": 1, "color": PALETTE["neon_soft"]},
+                        {"offset": 0, "color": PALETTE["lime"]},
+                        {"offset": 1, "color": PALETTE["neon"]},
                     ],
                 },
             },
@@ -407,8 +404,8 @@ def build_categoria_bar_option(
                 continue
             variacao = round((valor - anterior) / anterior * 100, 1)
             # Cor do ponto mantém o sinal de leitura rápida mesmo sem rótulo:
-            # verde para alta, vermelho para queda.
-            cor = PALETTE["table_header_start"] if variacao >= 0 else PALETTE["danger"]
+            # lime para alta, pink para queda (mesma dupla da referência).
+            cor = PALETTE["lime"] if variacao >= 0 else PALETTE["danger"]
             pct_points.append({"value": variacao, "itemStyle": {"color": cor}})
 
         series.append(
@@ -423,7 +420,7 @@ def build_categoria_bar_option(
                 "z": 3,
                 "connectNulls": True,
                 "lineStyle": {"color": PALETTE["text_muted"], "width": 2, "type": "dashed"},
-                "itemStyle": {"borderColor": "#FFFFFF", "borderWidth": 1.5},
+                "itemStyle": {"borderColor": PALETTE["surface"], "borderWidth": 1.5},
             }
         )
         y_axis.append(

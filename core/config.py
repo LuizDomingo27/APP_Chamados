@@ -16,6 +16,10 @@ SHEET_DADOS = "Dados Consolidados"
 SHEET_BUCKETS = "Buckets"
 SHEET_USUARIOS = "Usuários"
 
+# Dicionário de dados da aba "Dados Consolidados": UMA constante por coluna
+# da planilha, inclusive as que nenhuma tela usa hoje. Não é código morto —
+# é o contrato com o arquivo de origem, e o que impede que a próxima coluna
+# consumida entre no código como string mágica.
 COL_ID = "Identificação da tarefa"
 COL_NOME_TAREFA = "Nome da tarefa"
 COL_CATEGORIA = "Categoria"
@@ -46,6 +50,10 @@ COL_MOTIVO = "Motivo"
 COL_QUANTIDADE_REPOSICAO = "Quantidade Solicitada"
 COL_DIAS_ABERTO = "Dias em Aberto"
 COL_TEMPO_ATENDIMENTO_DIAS = "Tempo de Atendimento (dias)"
+# Linha de matéria-prima da ordem (Jeans, Malha, Pólo, Tear, Básico,
+# Elaborado). Derivada por services/material_service.py a partir do texto
+# de "Nome da tarefa" — ver core/materia_prima_normalize.py.
+COL_MATERIA_PRIMA = "Linha de Matéria-Prima"
 
 # ---------------------------------------------------------------------------
 # Domínio / regras de negócio
@@ -56,39 +64,47 @@ STATUS_EM_ANDAMENTO = "Em andamento"
 
 STATUS_ORDER = [STATUS_NAO_INICIADO, STATUS_EM_ANDAMENTO, STATUS_CONCLUIDA]
 
-# Ordem de severidade da prioridade (1 = mais urgente)
-PRIORIDADE_RANK = {
-    "Urgente": 1,
-    "Importante": 2,
-    "Média": 3,
-}
 DATE_FORMAT_BR = "%d/%m/%Y"
 
 # ---------------------------------------------------------------------------
-# Paleta — tema dark moderno (fundo navy profundo, acentos teal + roxo),
-# inspirado no dashboard de referência: superfícies escuras, verde-ciano
-# neon como cor primária e roxo como acento secundário.
+# Paleta — tema "Resumo Executivo": fundo quase preto azulado, superfícies
+# planas (sem gradiente), hairline de borda clara e uma família de acentos
+# fechada — teal (primário), lime (secundário), amber (atenção), pink
+# (crítico) e slate (resto/neutro).
+#
+# Superfícies são PLANAS de propósito: o degradê em toda card era o que
+# mais afastava o app da referência, onde a hierarquia vem do contraste
+# entre fundo/superfície e do acento nos rótulos, não de gradientes.
 # ---------------------------------------------------------------------------
 PALETTE = {
-    "bg": "#0E1420",
-    "surface": "#171F30",
-    "surface_alt": "#1E2740",
-    "text": "#EAF0F7",
-    "text_muted": "#8A97AD",
-    "border": "#2A3450",
-    "neon": "#2DD4BF",
-    "neon_soft": "#5EEAD4",
-    "neon_glow": "rgba(45, 212, 191, 0.30)",
-    "purple": "#8B5CF6",
-    "purple_soft": "#A78BFA",
-    "danger": "#FF6B6B",
-    "warning": "#FBBF24",
-    "info": "#3B82F6",
-    "success": "#2DD4BF",
-    "table_header_start": "#0F8A73",
-    "table_header_end": "#149E86",
-    "table_badge_bg": "#123A34",
-    "table_badge_text": "#5EEAD4",
+    # Superfícies (do mais escuro ao mais claro)
+    "bg": "#070F17",
+    "bg_deep": "#04090F",
+    "surface": "#0C1822",
+    "surface_alt": "#122230",
+    "surface_inset": "#0A141D",
+    "border": "#1B2C3A",
+    "border_strong": "#253F52",
+    # Texto
+    "text": "#E8F2F7",
+    "text_muted": "#8399A8",
+    "text_dim": "#5D7383",
+    # Acentos
+    "neon": "#2AE5C8",
+    "neon_glow": "rgba(42, 229, 200, 0.28)",
+    "lime": "#B7E546",
+    "amber": "#EFD03A",
+    "pink": "#F04D6E",
+    "slate": "#3E5461",
+    # Aliases semânticos (o que a UI consome por significado, não por cor)
+    "danger": "#F04D6E",
+    "warning": "#EFD03A",
+    "success": "#2AE5C8",
+    # Tabela
+    "table_header_start": "#0B5F52",
+    "table_header_end": "#107A69",
+    "table_badge_bg": "rgba(42, 229, 200, 0.13)",
+    "table_badge_text": "#7DF3E1",
 }
 
 # Cores fixas por status/prioridade — usadas nos cards e gráficos para
@@ -99,8 +115,15 @@ STATUS_COLORS = {
     STATUS_EM_ANDAMENTO: PALETTE["warning"],
 }
 
-# Quantidade padrão de itens no ranking de oficinas
-TOP_N_OFICINAS = 10
+# Ordem de cores para séries categóricas (fatias de rosca, grupos de
+# cards). Segue a referência: teal → lime → amber → slate, com o slate
+# fechando a série como "outros/neutro".
+SERIES_COLORS = [
+    PALETTE["neon"],
+    PALETTE["lime"],
+    PALETTE["amber"],
+    PALETTE["slate"],
+]
 
 # Quantidade padrão de itens no gráfico de top tipos de solicitação
 TOP_N_SOLICITACOES = 7
