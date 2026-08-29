@@ -65,7 +65,7 @@ from services.reposicao_parser_service import enrich_with_parsed_fields_reposica
 from ui.charts import (
     build_categoria_bar_option,
     build_donut_option,
-    build_trend_line_option,
+    build_trend_bar_option,
     render_echarts,
 )
 from ui.components import (
@@ -421,7 +421,7 @@ def _render_dashboard(df) -> None:
         with tab_dia:
             trend_df = tendencia_diaria(filtrado)
             if not trend_df.empty:
-                render_echarts(build_trend_line_option(trend_df), height=360)
+                render_echarts(build_trend_bar_option(trend_df), height=360)
         with tab_semana:
             semana_df = tendencia_semanal(filtrado)
             if not semana_df.empty:

@@ -1,14 +1,14 @@
 """
 ui/styles.py
 
-Folha de estilo única do app — tema "Resumo Executivo".
+Folha de estilo única do app — tema "Clean Light".
 
-Linguagem visual (espelha o dashboard de referência):
-  • fundo quase preto azulado com um halo teal difuso no canto inferior;
-  • superfícies PLANAS (sem degradê) separadas do fundo por hairline;
-  • rótulo de seção em teal, caixa alta e espaçado; valor em branco pesado;
-  • acentos de uma família fechada: teal → lime → amber → pink → slate;
-  • cantos generosos (14-18px) e movimento curto (.18s) apenas em hover.
+Linguagem visual (espelha o dashboard de referência aprovado):
+  • fundo cinza muito claro e superfícies brancas;
+  • cartões com hairline, sombra curta e cantos generosos;
+  • rótulos azul-acinzentados e valores em azul-marinho;
+  • acentos semânticos: teal, verde, âmbar, rosa e slate;
+  • ícones em pequenos quadrados tonalizados, sem brilho ou degradê.
 
 Centraliza toda a estética para não espalhar CSS inline pelas telas: as
 páginas só chamam os componentes de ui/components.py, que consomem as
@@ -21,10 +21,10 @@ from core.config import PALETTE
 from core.utils import rgba
 from ui.icons import icon_data_uri
 
-# Largura do rail de navegação (sidebar). Fica em constante porque o valor
-# aparece em três regras diferentes e precisa bater exatamente entre elas —
-# divergência de poucos pixels deixa o conteúdo desalinhado do rail.
-_RAIL_WIDTH = "212px"
+# A largura do rail acompanha o viewport: mantém 212 px em telas largas e
+# encolhe até 176 px quando o espaço horizontal aperta. O mesmo valor é
+# aplicado ao contêiner e ao conteúdo para evitar desalinhamento.
+_RAIL_WIDTH = "clamp(176px, 15vw, 212px)"
 
 
 def _icon_uri(name: str) -> str:
@@ -50,7 +50,7 @@ def get_custom_css() -> str:
     rgba_pink_28 = rgba(p["pink"], 0.28)
     return f"""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
 /* Tokens expostos como custom properties: os componentes de
    ui/components.py referenciam var(--accent) para trocar de cor sem que
@@ -72,10 +72,11 @@ def get_custom_css() -> str:
 
 html, body, [class*="css"] {{
     font-family: 'Inter', sans-serif;
+    color: {p['text']};
 }}
 
 h1, h2, h3, h4, .kpi-card__value {{
-    font-family: 'Sora', sans-serif !important;
+    font-family: 'Inter', sans-serif !important;
 }}
 
 /* ---------- Fundo da aplicação ---------- */
@@ -84,21 +85,11 @@ h1, h2, h3, h4, .kpi-card__value {{
    ficava visível no meio do conteúdo. */
 .stApp {{
     background: {p['bg']};
+    color: {p['text']};
 }}
 
 .stApp::before {{
-    content: "";
-    position: fixed;
-    left: -12%;
-    bottom: -18%;
-    width: 55vw;
-    height: 55vh;
-    background: radial-gradient(circle at 30% 70%,
-        rgba(42, 229, 200, 0.10) 0%,
-        rgba(42, 229, 200, 0.03) 42%,
-        rgba(42, 229, 200, 0) 70%);
-    pointer-events: none;
-    z-index: 0;
+    display: none;
 }}
 
 /* O header nativo do Streamlit (menu/deploy) fica transparente para não
@@ -110,13 +101,25 @@ header[data-testid="stHeader"] {{
 /* ---------- Rail de navegação (sidebar, ver app.py) ---------- */
 [data-testid="stSidebar"] {{
     width: {_RAIL_WIDTH} !important;
-    min-width: {_RAIL_WIDTH} !important;
-    background: {p['bg_deep']} !important;
+    min-width: 0 !important;
+    max-width: 212px !important;
+    background: {p['surface']} !important;
     border-right: 1px solid {p['border']};
 }}
 
 [data-testid="stSidebar"] > div:first-child {{
-    width: {_RAIL_WIDTH} !important;
+    width: 100% !important;
+    min-width: 0 !important;
+}}
+
+/* O Streamlit marca o rail recolhido com aria-expanded="false". A antiga
+   largura mínima fixa mantinha os 212 px reservados mesmo nesse estado. */
+[data-testid="stSidebar"][aria-expanded="false"] {{
+    width: 0 !important;
+    min-width: 0 !important;
+    max-width: 0 !important;
+    border-right-width: 0;
+    overflow: hidden;
 }}
 
 [data-testid="stSidebarUserContent"] {{
@@ -126,20 +129,7 @@ header[data-testid="stHeader"] {{
 /* Linhas decorativas no pé do rail — mesmo detalhe gráfico da referência,
    feito com dois gradientes cônicos suaves em vez de imagem. */
 [data-testid="stSidebar"]::after {{
-    content: "";
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    height: 220px;
-    background:
-        radial-gradient(120% 60% at 10% 100%, rgba(42, 229, 200, 0.09) 0%, rgba(42, 229, 200, 0) 68%),
-        repeating-linear-gradient(115deg,
-            rgba(42, 229, 200, 0.055) 0px,
-            rgba(42, 229, 200, 0.055) 1px,
-            rgba(42, 229, 200, 0) 1px,
-            rgba(42, 229, 200, 0) 22px);
-    pointer-events: none;
+    display: none;
 }}
 
 /* Bloco de marca (topo do rail) */
@@ -156,7 +146,7 @@ header[data-testid="stHeader"] {{
     width: 46px;
     height: 46px;
     color: {p['neon']};
-    filter: drop-shadow(0 0 14px {p['neon_glow']});
+    filter: none;
 }}
 .rail-brand__icon svg {{
     width: 100%;
@@ -164,14 +154,14 @@ header[data-testid="stHeader"] {{
     display: block;
 }}
 .rail-brand__title {{
-    font-family: 'Sora', sans-serif;
+    font-family: 'Inter', sans-serif;
     font-weight: 700;
-    font-size: 11.5px;
-    line-height: 1.35;
-    letter-spacing: .09em;
+    font-size: 11.5px !important;
+    line-height: 1.35 !important;
+    letter-spacing: .09em !important;
     text-align: center;
     text-transform: uppercase;
-    color: {p['neon']};
+    color: {p['text']};
     margin: 0;
 }}
 
@@ -186,7 +176,7 @@ header[data-testid="stHeader"] {{
     border-radius: var(--ppc-radius-sm) !important;
     padding: 10px 14px !important;
     justify-content: flex-start !important;
-    font-family: 'Sora', sans-serif !important;
+    font-family: 'Inter', sans-serif !important;
     font-weight: 600 !important;
     font-size: 13.5px !important;
     color: {p['text_muted']} !important;
@@ -225,7 +215,7 @@ header[data-testid="stHeader"] {{
 }}
 
 .st-key-nav_rail button:hover {{
-    background: {p['surface']} !important;
+    background: {p['surface_inset']} !important;
     color: {p['text']} !important;
 }}
 
@@ -233,10 +223,10 @@ header[data-testid="stHeader"] {{
    teal translúcida com texto teal — o preenchimento sólido usado antes
    brigava com o rótulo de seção, que agora também é teal. */
 .st-key-nav_rail [data-testid="stBaseButton-primary"] {{
-    background: rgba(42, 229, 200, 0.14) !important;
-    border-color: rgba(42, 229, 200, 0.40) !important;
+    background: rgba(15, 159, 143, 0.09) !important;
+    border-color: rgba(15, 159, 143, 0.18) !important;
     color: {p['neon']} !important;
-    box-shadow: inset 0 0 0 1px rgba(42, 229, 200, 0.06);
+    box-shadow: none;
 }}
 
 .st-key-nav_rail [data-testid="stBaseButton-primary"] * {{
@@ -255,29 +245,24 @@ header[data-testid="stHeader"] {{
     margin-bottom: 20px;
     position: relative;
     overflow: hidden;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.035);
 }}
 /* Fio teal na borda superior — assina o card sem recorrer a degradê no
    preenchimento, que é o que "amassava" o visual plano da referência. */
 .app-header::before {{
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 2px;
-    background: linear-gradient(90deg, {p['neon']} 0%, {p['lime']} 45%, transparent 100%);
+    display: none;
 }}
 .app-header__icon {{
-    width: 48px;
-    height: 48px;
-    flex: 0 0 48px;
-    padding: 12px;
+    width: 42px;
+    height: 42px;
+    flex: 0 0 42px;
+    padding: 10px;
     box-sizing: border-box;
     color: {p['neon']};
-    border-radius: 50%;
-    background: rgba(42, 229, 200, 0.10);
-    border: 1.5px solid rgba(42, 229, 200, 0.40);
-    box-shadow: 0 0 22px {p['neon_glow']};
+    border-radius: 12px;
+    background: rgba(15, 159, 143, 0.09);
+    border: 1px solid rgba(15, 159, 143, 0.14);
+    box-shadow: none;
 }}
 .app-header__icon svg {{
     display: block;
@@ -285,7 +270,7 @@ header[data-testid="stHeader"] {{
     height: 100%;
 }}
 .app-header__title {{
-    font-family: 'Sora', sans-serif;
+    font-family: 'Inter', sans-serif;
     font-weight: 700;
     font-size: 21px;
     letter-spacing: -.01em;
@@ -313,18 +298,26 @@ div[class*="st-key-ppcpanel-"] {{
     border: 1px solid {p['border']};
     border-radius: var(--ppc-radius);
     padding: 18px 20px 20px 20px;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.035);
+}}
+
+/* Os cards de Destaques terminam imediatamente antes deste painel. O
+   Streamlit não injeta gap entre os dois blocos, então reservamos aqui o
+   mesmo respiro vertical usado entre as demais seções do dashboard. */
+.st-key-ppcpanel-ppc-tendencia {{
+    margin-top: 24px;
 }}
 
 /* ---------- Rótulo de seção ---------- */
 /* Teal, caixa alta e espaçado — é o marcador visual mais característico da
    referência ("OFICINAS COM MAIOR QUANTIDADE DE AJUSTES"). */
 .section-title {{
-    font-family: 'Sora', sans-serif;
+    font-family: 'Inter', sans-serif;
     font-weight: 700;
     font-size: 12px;
     letter-spacing: .10em;
     text-transform: uppercase;
-    color: {p['neon']};
+    color: {p['text_muted']};
     margin: 26px 0 14px 0;
     display: flex;
     align-items: center;
@@ -335,7 +328,7 @@ div[class*="st-key-ppcpanel-"] {{
     height: 15px;
     border-radius: 4px;
     background: {p['neon']};
-    box-shadow: 0 0 10px {p['neon_glow']};
+    box-shadow: none;
     display: inline-block;
     flex: 0 0 4px;
 }}
@@ -356,47 +349,45 @@ div[class*="st-key-ppcpanel-"] {{
     border-radius: var(--ppc-radius);
     padding: 18px 20px;
     height: 100%;
-    transition: border-color .18s ease, transform .18s ease;
+    min-height: 200px;
+    box-shadow: 0 3px 10px rgba(15, 23, 42, 0.045);
+    transition: border-color .18s ease, box-shadow .18s ease;
 }}
 .kpi-card:hover {{
     border-color: var(--accent-ring, {p['border_strong']});
-    transform: translateY(-2px);
+    box-shadow: 0 7px 18px rgba(15, 23, 42, 0.075);
 }}
 /* Halo do acento no canto — único "brilho" que sobrou, bem discreto. */
 .kpi-card::after {{
-    content: "";
-    position: absolute;
-    top: -30px;
-    right: -30px;
-    width: 90px;
-    height: 90px;
-    border-radius: 50%;
-    background: radial-gradient(circle,
-        var(--accent-halo, {p['neon_glow']}) 0%,
-        transparent 70%);
-    pointer-events: none;
+    display: none;
 }}
 
 .kpi-card__head {{
-    display: flex;
-    align-items: center;
-    gap: 12px;
+    display: block;
+    height: 36px;
+    min-height: 36px;
+    flex: 0 0 36px;
+    box-sizing: border-box;
+    padding-right: 48px;
     margin-bottom: 12px;
 }}
 
 /* Medalhão circular do ícone: anel na cor do acento sobre preenchimento
    translúcido da mesma cor — o "selo" dos cards da referência. */
 .kpi-card__medallion {{
-    width: 42px;
-    height: 42px;
-    flex: 0 0 42px;
-    padding: 10px;
+    position: absolute;
+    top: 18px;
+    right: 20px;
+    width: 36px;
+    height: 36px;
+    flex: 0 0 36px;
+    padding: 9px;
     box-sizing: border-box;
     color: var(--accent, {p['neon']});
-    border-radius: 50%;
-    background: var(--accent-soft, rgba(42, 229, 200, 0.12));
-    border: 1.5px solid var(--accent-ring, rgba(42, 229, 200, 0.42));
-    box-shadow: 0 0 18px var(--accent-glow, {p['neon_glow']});
+    border-radius: 11px;
+    background: var(--accent-soft, rgba(15, 159, 143, 0.10));
+    border: none;
+    box-shadow: none;
 }}
 .kpi-card__medallion svg,
 .destaque-card__medallion svg {{
@@ -406,28 +397,30 @@ div[class*="st-key-ppcpanel-"] {{
 }}
 
 .kpi-card__label {{
+    flex: 1 1 auto;
     font-size: 10.5px;
     font-weight: 700;
     letter-spacing: .09em;
     color: {p['text_muted']};
     text-transform: uppercase;
-    margin: 0;
-    line-height: 1.35;
+    margin: 0 !important;
+    line-height: 1.35 !important;
 }}
 .kpi-card__value {{
-    font-family: 'Sora', sans-serif;
+    font-family: 'Inter', sans-serif;
     font-weight: 800;
     font-size: 32px;
     letter-spacing: -.02em;
     color: {p['text']};
-    margin: 0 0 2px 0;
-    line-height: 1.1;
+    margin: 0 0 2px 0 !important;
+    line-height: 1.1 !important;
 }}
 .kpi-card__subtitle {{
     font-size: 12px;
     font-weight: 500;
     color: {p['text_muted']};
-    margin: 0;
+    margin: 0 !important;
+    line-height: 1.4 !important;
 }}
 
 /* Chip "25% do total" — mesma pílula translúcida da referência. */
@@ -438,8 +431,8 @@ div[class*="st-key-ppcpanel-"] {{
     font-weight: 700;
     letter-spacing: .02em;
     color: var(--accent, {p['neon']});
-    background: var(--accent-soft, rgba(42, 229, 200, 0.12));
-    border: 1px solid var(--accent-ring, rgba(42, 229, 200, 0.42));
+    background: var(--accent-soft, rgba(15, 159, 143, 0.10));
+    border: 1px solid var(--accent-ring, rgba(15, 159, 143, 0.28));
     border-radius: 999px;
     padding: 3px 11px;
 }}
@@ -447,7 +440,7 @@ div[class*="st-key-ppcpanel-"] {{
 /* Barra de proporção sob o valor */
 .kpi-card__track {{
     margin-top: 14px;
-    height: 6px;
+    height: 5px;
     border-radius: 999px;
     background: {p['surface_inset']};
     overflow: hidden;
@@ -456,7 +449,7 @@ div[class*="st-key-ppcpanel-"] {{
     height: 100%;
     border-radius: 999px;
     background: var(--accent, {p['neon']});
-    box-shadow: 0 0 10px var(--accent-glow, {p['neon_glow']});
+    box-shadow: none;
 }}
 
 /* ---------- Destaque cards ---------- */
@@ -469,11 +462,12 @@ div[class*="st-key-ppcpanel-"] {{
     border-radius: var(--ppc-radius);
     padding: 18px 20px;
     height: 100%;
-    transition: border-color .18s ease, transform .18s ease;
+    box-shadow: 0 3px 10px rgba(15, 23, 42, 0.045);
+    transition: border-color .18s ease, box-shadow .18s ease;
 }}
 .destaque-card:hover {{
     border-color: var(--accent-ring, {p['border_strong']});
-    transform: translateY(-2px);
+    box-shadow: 0 7px 18px rgba(15, 23, 42, 0.075);
 }}
 .destaque-card__medallion {{
     width: 38px;
@@ -482,9 +476,9 @@ div[class*="st-key-ppcpanel-"] {{
     padding: 9px;
     box-sizing: border-box;
     color: var(--accent, {p['neon']});
-    border-radius: 50%;
-    background: var(--accent-soft, rgba(42, 229, 200, 0.12));
-    border: 1.5px solid var(--accent-ring, rgba(42, 229, 200, 0.42));
+    border-radius: 11px;
+    background: var(--accent-soft, rgba(15, 159, 143, 0.10));
+    border: none;
 }}
 .destaque-card__body {{
     min-width: 0;
@@ -499,7 +493,7 @@ div[class*="st-key-ppcpanel-"] {{
     margin: 0 0 7px 0;
 }}
 .destaque-card__value {{
-    font-family: 'Sora', sans-serif;
+    font-family: 'Inter', sans-serif;
     font-weight: 700;
     font-size: 17px;
     color: {p['text']};
@@ -528,7 +522,7 @@ div[class*="st-key-ppcpanel-"] {{
     align-items: center;
     gap: 12px;
     padding: 10px 14px;
-    background: {p['surface_inset']};
+    background: {p['surface_alt']};
     border: 1px solid {p['border']};
     border-radius: var(--ppc-radius-sm);
     transition: border-color .18s ease;
@@ -547,8 +541,8 @@ div[class*="st-key-ppcpanel-"] {{
     justify-content: center;
     border-radius: 50%;
     background: var(--accent, {p['neon']});
-    color: {p['bg_deep']};
-    font-family: 'Sora', sans-serif;
+    color: #FFFFFF;
+    font-family: 'Inter', sans-serif;
     font-weight: 800;
     font-size: 11.5px;
     line-height: 1;
@@ -563,7 +557,7 @@ div[class*="st-key-ppcpanel-"] {{
 }}
 .rank-row__meta {{
     flex: 0 0 auto;
-    font-family: 'Sora', sans-serif;
+    font-family: 'Inter', sans-serif;
     font-size: 12px;
     font-weight: 700;
     color: var(--accent, {p['neon']});
@@ -616,9 +610,9 @@ table.ppc-table thead th {{
     position: sticky;
     top: 0;
     z-index: 1;
-    background: linear-gradient(135deg, {p['table_header_start']} 0%, {p['table_header_end']} 100%);
-    color: #FFFFFF;
-    font-family: 'Sora', sans-serif;
+    background: {p['table_header_start']};
+    color: {p['text_muted']};
+    font-family: 'Inter', sans-serif;
     font-weight: 600;
     font-size: 11px;
     letter-spacing: .07em;
@@ -654,7 +648,7 @@ table.ppc-table tbody tr:nth-child(odd) {{
     background: {p['surface']};
 }}
 table.ppc-table tbody tr:hover {{
-    background: rgba(42, 229, 200, 0.09);
+    background: rgba(15, 159, 143, 0.06);
 }}
 table.ppc-table tbody tr:last-child td {{
     border-bottom: none;
@@ -672,9 +666,10 @@ td.ppc-align-center {{ text-align: center; }}
     border: 1px solid {p['border']} !important;
     border-radius: var(--ppc-radius) !important;
     overflow: hidden;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.035);
 }}
 [data-testid="stExpander"] summary {{
-    font-family: 'Sora', sans-serif !important;
+    font-family: 'Inter', sans-serif !important;
     font-weight: 600 !important;
     font-size: 12.5px !important;
     letter-spacing: .04em;
@@ -692,7 +687,7 @@ div[data-testid="stTextInput"] > div > div,
 div[data-testid="stDateInput"] > div > div {{
     border-radius: var(--ppc-radius-sm) !important;
     border: 1px solid {p['border']} !important;
-    background: {p['surface_inset']} !important;
+    background: {p['surface']} !important;
     transition: border-color .18s ease;
 }}
 div[data-testid="stMultiSelect"] > div > div:focus-within,
@@ -724,13 +719,13 @@ div[data-testid="stMultiSelect"] span[data-baseweb="tag"] {{
 [data-baseweb="tab-list"] [data-baseweb="tab"] {{
     border-radius: 999px !important;
     padding: 6px 18px !important;
-    font-family: 'Sora', sans-serif !important;
+    font-family: 'Inter', sans-serif !important;
     font-weight: 600 !important;
     font-size: 12.5px !important;
     color: {p['text_muted']} !important;
 }}
 [data-baseweb="tab-list"] [aria-selected="true"] {{
-    background: rgba(42, 229, 200, 0.14) !important;
+    background: rgba(15, 159, 143, 0.10) !important;
     color: {p['neon']} !important;
 }}
 [data-baseweb="tab-highlight"], [data-baseweb="tab-border"] {{
@@ -786,7 +781,7 @@ div[data-testid="stMultiSelect"] span[data-baseweb="tag"] {{
     margin-bottom: 22px;
 }}
 .an-group__title {{
-    font-family: 'Sora', sans-serif;
+    font-family: 'Inter', sans-serif;
     font-weight: 700;
     font-size: 11.5px;
     letter-spacing: .10em;
@@ -819,13 +814,14 @@ div[data-testid="stMultiSelect"] span[data-baseweb="tag"] {{
     overflow: hidden;
     background: {p['surface']};
     border: 1px solid {p['border']};
-    border-left: 3px solid var(--accent, {p['neon']});
     border-radius: 14px;
     padding: 14px 16px;
-    transition: border-color .18s ease, transform .18s ease;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.035);
+    transition: border-color .18s ease, box-shadow .18s ease;
 }}
 .an-card:hover {{
-    transform: translateY(-2px);
+    border-color: var(--accent-ring, {p['border_strong']});
+    box-shadow: 0 6px 15px rgba(15, 23, 42, 0.07);
 }}
 .an-card__label {{
     font-size: 10px;
@@ -836,7 +832,7 @@ div[data-testid="stMultiSelect"] span[data-baseweb="tag"] {{
     margin: 0 0 8px 0;
 }}
 .an-card__value {{
-    font-family: 'Sora', sans-serif;
+    font-family: 'Inter', sans-serif;
     font-weight: 800;
     font-size: 26px;
     line-height: 1.1;
@@ -862,10 +858,10 @@ div[data-testid="stMultiSelect"] span[data-baseweb="tag"] {{
 
 /* ---------- Diálogo (pop-up) ---------- */
 div[data-testid="stDialog"] div[role="dialog"] {{
-    background: {p['bg']};
+    background: {p['surface']};
     border: 1px solid {p['border']};
     border-radius: 20px;
-    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.60);
+    box-shadow: 0 24px 60px rgba(15, 23, 42, 0.20);
 }}
 
 /* ---------- Botões de ação da barra de filtros ---------- */
@@ -877,11 +873,11 @@ div[data-testid="stDialog"] div[role="dialog"] {{
 .st-key-rep_analytics_btn button,
 .st-key-ppc_reset button,
 .st-key-rep_reset button {{
-    background: {p['surface_inset']} !important;
+    background: {p['surface']} !important;
     border: 1px solid {p['border_strong']} !important;
-    border-radius: 999px !important;
+    border-radius: 12px !important;
     color: {p['text']} !important;
-    font-family: 'Sora', sans-serif !important;
+    font-family: 'Inter', sans-serif !important;
     font-weight: 600 !important;
     font-size: 12.5px !important;
     padding: 7px 18px !important;
@@ -899,7 +895,7 @@ div[data-testid="stDialog"] div[role="dialog"] {{
 /* Legenda de gráfico centralizada — usada sobre a rosca, cujo conteúdo
    é radial e fica desalinhado com um texto encostado à esquerda. */
 .chart-caption {{
-    font-family: 'Sora', sans-serif;
+    font-family: 'Inter', sans-serif;
     font-size: 11.5px;
     font-weight: 600;
     letter-spacing: .06em;
@@ -907,6 +903,88 @@ div[data-testid="stDialog"] div[role="dialog"] {{
     color: {p['text_muted']};
     text-align: center;
     margin: 0 0 6px 0;
+}}
+
+/* ---------- Ajustes responsivos ---------- */
+@media (max-width: 1180px) {{
+    [data-testid="stSidebarUserContent"] {{
+        padding-left: 10px !important;
+        padding-right: 10px !important;
+    }}
+
+    .rail-brand__title {{
+        font-size: 10.5px !important;
+        letter-spacing: .06em !important;
+    }}
+
+    .st-key-nav_rail button {{
+        padding-left: 10px !important;
+        padding-right: 10px !important;
+        font-size: 13px !important;
+    }}
+
+    .st-key-nav_rail button::before {{
+        margin-right: 8px;
+    }}
+
+    .app-header {{
+        padding: 16px 18px;
+    }}
+
+    .kpi-card {{
+        padding: 15px 14px;
+    }}
+
+    .kpi-card__head {{
+        height: 36px;
+        min-height: 36px;
+        flex-basis: 36px;
+        padding-right: 38px;
+    }}
+
+    .kpi-card__medallion {{
+        top: 14px;
+        right: 14px;
+        width: 32px;
+        height: 32px;
+        flex-basis: 32px;
+        padding: 8px;
+    }}
+
+    .kpi-card__label {{
+        font-size: 9.5px;
+        letter-spacing: .045em;
+    }}
+
+    .kpi-card__value {{
+        font-size: 29px;
+    }}
+
+    .kpi-card__chip {{
+        font-size: 10px;
+        padding: 2px 8px;
+    }}
+
+    [data-testid="stWidgetLabel"] p {{
+        font-size: 9.5px !important;
+        letter-spacing: .03em;
+    }}
+
+    .st-key-ppc_analytics_btn button,
+    .st-key-rep_analytics_btn button,
+    .st-key-ppc_reset button,
+    .st-key-rep_reset button {{
+        min-height: 40px;
+        padding: 6px 8px !important;
+        font-size: 10.5px !important;
+        line-height: 1.2 !important;
+    }}
+}}
+
+@media (max-width: 640px) {{
+    [data-testid="stSidebar"] {{
+        width: clamp(156px, 44vw, 176px) !important;
+    }}
 }}
 </style>
 """

@@ -35,13 +35,13 @@ _CHART_FONT = "'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
 _COL_VALOR = "Total de Chamados"
 
 _TOOLTIP_BASE = {
-    "backgroundColor": rgba(PALETTE["surface_alt"], 0.96),
+    "backgroundColor": rgba(PALETTE["surface"], 0.98),
     "borderColor": rgba(PALETTE["neon"], 0.45),
     "borderWidth": 1,
     "borderRadius": 12,
     "padding": [10, 14],
     "textStyle": {"color": PALETTE["text"], "fontFamily": _CHART_FONT, "fontSize": 13},
-    "extraCssText": f"box-shadow: 0 8px 28px {rgba(PALETTE['bg_deep'], 0.65)};",
+    "extraCssText": "box-shadow: 0 8px 28px rgba(15, 23, 42, 0.14);",
 }
 
 
@@ -120,8 +120,8 @@ def render_echarts(option: dict, height: int = 380) -> None:
     st.iframe(html, height=height, width="stretch")
 
 
-def build_trend_line_option(trend_df: pd.DataFrame) -> dict:
-    """Linha de tendência diária de chamados + linha de referência (média)."""
+def build_trend_bar_option(trend_df: pd.DataFrame) -> dict:
+    """Barras verticais da tendência diária, sem linha de média."""
     faltando = [
         col for col in ("Data", "Chamados", "Média do Período")
         if col not in getattr(trend_df, "columns", [])
@@ -133,10 +133,8 @@ def build_trend_line_option(trend_df: pd.DataFrame) -> dict:
 
     datas = trend_df["Data"].dt.strftime("%d/%m").tolist()
     valores = trend_df["Chamados"].tolist()
-    media = float(trend_df["Média do Período"].iloc[0]) if not trend_df.empty else 0
-
     return {
-        "tooltip": {**_TOOLTIP_BASE, "trigger": "axis"},
+        "tooltip": {**_TOOLTIP_BASE, "trigger": "axis", "axisPointer": {"type": "shadow"}},
         "grid": {"left": 40, "right": 70, "top": 30, "bottom": 36},
         "xAxis": {
             "type": "category",
@@ -156,13 +154,13 @@ def build_trend_line_option(trend_df: pd.DataFrame) -> dict:
         "series": [
             {
                 "name": "Chamados",
-                "type": "line",
+                "type": "bar",
                 "data": valores,
-                "smooth": True,
-                "symbol": "circle",
-                "symbolSize": 6,
-                "lineStyle": {"color": PALETTE["neon"], "width": 3},
-                "itemStyle": {"color": PALETTE["neon"]},
+                "barMaxWidth": 34,
+                "itemStyle": {
+                    "color": PALETTE["neon"],
+                    "borderRadius": [6, 6, 0, 0],
+                },
                 "label": {
                     "show": True,
                     "position": "top",
@@ -176,36 +174,14 @@ def build_trend_line_option(trend_df: pd.DataFrame) -> dict:
                 # omitir os que colidem, mantendo os demais legíveis — sem
                 # isso o gráfico vira um borrão de números em períodos longos.
                 "labelLayout": {"hideOverlap": True},
-                "areaStyle": {
-                    "color": {
-                        "type": "linear",
-                        "x": 0, "y": 0, "x2": 0, "y2": 1,
-                        "colorStops": [
-                            {"offset": 0, "color": rgba(PALETTE["neon"], 0.32)},
-                            {"offset": 1, "color": rgba(PALETTE["neon"], 0.02)},
-                        ],
-                    }
-                },
-                "markLine": {
-                    "symbol": "none",
-                    "label": {
-                        "show": True,
-                        "position": "end",
-                        "formatter": f"Média: {media:.1f}",
-                        "color": PALETTE["table_badge_text"],
-                        "backgroundColor": PALETTE["table_badge_bg"],
-                        "padding": [4, 8],
-                        "borderRadius": 6,
-                        "fontFamily": _CHART_FONT,
-                        "fontSize": 11,
-                        "fontWeight": 600,
-                    },
-                    "lineStyle": {"color": PALETTE["table_badge_text"], "type": "dashed", "width": 1.5},
-                    "data": [{"yAxis": media}],
-                },
             }
         ],
     }
+
+
+# Compatibilidade para qualquer consumidor externo que ainda importe o nome
+# anterior. A página usa o nome novo, mas a assinatura e os dados não mudam.
+build_trend_line_option = build_trend_bar_option
 
 
 def build_donut_option(
@@ -367,14 +343,7 @@ def build_categoria_bar_option(
             "label": label_barra,
             "itemStyle": {
                 "borderRadius": [8, 8, 0, 0],
-                "color": {
-                    "type": "linear",
-                    "x": 0, "y": 0, "x2": 0, "y2": 1,
-                    "colorStops": [
-                        {"offset": 0, "color": PALETTE["lime"]},
-                        {"offset": 1, "color": PALETTE["neon"]},
-                    ],
-                },
+                "color": PALETTE["neon"],
             },
         }
     ]

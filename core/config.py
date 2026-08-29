@@ -67,44 +67,40 @@ STATUS_ORDER = [STATUS_NAO_INICIADO, STATUS_EM_ANDAMENTO, STATUS_CONCLUIDA]
 DATE_FORMAT_BR = "%d/%m/%Y"
 
 # ---------------------------------------------------------------------------
-# Paleta — tema "Resumo Executivo": fundo quase preto azulado, superfícies
-# planas (sem gradiente), hairline de borda clara e uma família de acentos
-# fechada — teal (primário), lime (secundário), amber (atenção), pink
-# (crítico) e slate (resto/neutro).
-#
-# Superfícies são PLANAS de propósito: o degradê em toda card era o que
-# mais afastava o app da referência, onde a hierarquia vem do contraste
-# entre fundo/superfície e do acento nos rótulos, não de gradientes.
+# Paleta — tema "Clean Light": fundo cinza muito claro, superfícies brancas,
+# texto azul-marinho e acentos semânticos discretos. A hierarquia visual vem
+# de espaço, tipografia, hairlines e pequenas áreas de cor — nunca de fundos
+# escuros, neon ou degradês decorativos.
 # ---------------------------------------------------------------------------
 PALETTE = {
-    # Superfícies (do mais escuro ao mais claro)
-    "bg": "#070F17",
-    "bg_deep": "#04090F",
-    "surface": "#0C1822",
-    "surface_alt": "#122230",
-    "surface_inset": "#0A141D",
-    "border": "#1B2C3A",
-    "border_strong": "#253F52",
+    # Superfícies
+    "bg": "#F5F7FA",
+    "bg_deep": "#FFFFFF",
+    "surface": "#FFFFFF",
+    "surface_alt": "#F8FAFC",
+    "surface_inset": "#F1F5F9",
+    "border": "#E2E8F0",
+    "border_strong": "#CBD5E1",
     # Texto
-    "text": "#E8F2F7",
-    "text_muted": "#8399A8",
-    "text_dim": "#5D7383",
+    "text": "#071A36",
+    "text_muted": "#5F7694",
+    "text_dim": "#94A3B8",
     # Acentos
-    "neon": "#2AE5C8",
-    "neon_glow": "rgba(42, 229, 200, 0.28)",
-    "lime": "#B7E546",
-    "amber": "#EFD03A",
-    "pink": "#F04D6E",
-    "slate": "#3E5461",
+    "neon": "#0F9F8F",
+    "neon_glow": "rgba(15, 159, 143, 0.16)",
+    "lime": "#10B981",
+    "amber": "#F59E0B",
+    "pink": "#FF3B5C",
+    "slate": "#334155",
     # Aliases semânticos (o que a UI consome por significado, não por cor)
-    "danger": "#F04D6E",
-    "warning": "#EFD03A",
-    "success": "#2AE5C8",
+    "danger": "#FF3B5C",
+    "warning": "#F59E0B",
+    "success": "#10B981",
     # Tabela
-    "table_header_start": "#0B5F52",
-    "table_header_end": "#107A69",
-    "table_badge_bg": "rgba(42, 229, 200, 0.13)",
-    "table_badge_text": "#7DF3E1",
+    "table_header_start": "#F1F5F9",
+    "table_header_end": "#F1F5F9",
+    "table_badge_bg": "rgba(15, 159, 143, 0.10)",
+    "table_badge_text": "#0F766E",
 }
 
 # Cores fixas por status/prioridade — usadas nos cards e gráficos para

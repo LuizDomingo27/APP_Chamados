@@ -58,10 +58,10 @@ def _accent_style(accent: str | None) -> str:
     cor = f"#{r:02X}{g:02X}{b:02X}"
     return (
         f"--accent:{cor};"
-        f"--accent-soft:{rgba(cor, 0.12)};"
-        f"--accent-ring:{rgba(cor, 0.42)};"
-        f"--accent-glow:{rgba(cor, 0.22)};"
-        f"--accent-halo:{rgba(cor, 0.16)};"
+        f"--accent-soft:{rgba(cor, 0.10)};"
+        f"--accent-ring:{rgba(cor, 0.26)};"
+        f"--accent-glow:{rgba(cor, 0.10)};"
+        f"--accent-halo:{rgba(cor, 0.08)};"
     )
 
 
