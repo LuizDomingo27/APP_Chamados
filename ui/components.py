@@ -199,16 +199,19 @@ def render_kpi_card(
         if pct is not None
         else ""
     )
+    card_modifier = " kpi-card--compact" if not chip_html and not progress_html else ""
 
     st.markdown(
         f"""
-        <div class="kpi-card" style="{_accent_style(accent)}">
+        <div class="kpi-card{card_modifier}" style="{_accent_style(accent)}">
             <div class="kpi-card__head">
                 <div class="kpi-card__medallion">{svg_icon(icon)}</div>
                 <p class="kpi-card__label">{_texto(label, vazio="")}</p>
             </div>
-            <p class="kpi-card__value">{value_fmt}</p>
-            {subtitle_html}
+            <div class="kpi-card__content">
+                <p class="kpi-card__value">{value_fmt}</p>
+                {subtitle_html}
+            </div>
             {progress_html}
             {chip_html}
         </div>
@@ -519,14 +522,15 @@ def render_styled_dataframe(
     # CSS; 120px é o mínimo para caber cabeçalho + uma linha.
     altura = max(120, int(height)) if isinstance(height, (int, float)) else 420
 
-    table_html = f"""
-    <div class="{wrapper_class}">
-        <div class="ppc-table-scroll" style="max-height:{altura}px;">
-            <table class="ppc-table">
-                <thead><tr>{header_html}</tr></thead>
-                <tbody>{''.join(rows_html)}</tbody>
-            </table>
-        </div>
-    </div>
-    """
+    # HTML sem indentação: o parser Markdown interpreta linhas com quatro
+    # espaços como bloco de código e, dependendo da versão do Streamlit,
+    # isso fazia a tabela perder as classes e parecer sem estilização.
+    table_html = (
+        f'<div class="{wrapper_class}">'
+        f'<div class="ppc-table-scroll" style="max-height:{altura}px;">'
+        '<table class="ppc-table">'
+        f'<thead><tr>{header_html}</tr></thead>'
+        f'<tbody>{"".join(rows_html)}</tbody>'
+        '</table></div></div>'
+    )
     st.markdown(table_html, unsafe_allow_html=True)

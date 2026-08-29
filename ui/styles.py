@@ -345,17 +345,17 @@ div[class*="st-key-ppcpanel-"] {{
     display: flex;
     flex-direction: column;
     background: {p['surface']};
-    border: 1px solid {p['border']};
+    border: 1px solid var(--accent-ring, {p['border']});
     border-radius: var(--ppc-radius);
     padding: 18px 20px;
     height: 100%;
     min-height: 200px;
-    box-shadow: 0 3px 10px rgba(15, 23, 42, 0.045);
+    box-shadow: 0 4px 15px var(--accent-glow, rgba(15, 159, 143, 0.10));
     transition: border-color .18s ease, box-shadow .18s ease;
 }}
 .kpi-card:hover {{
-    border-color: var(--accent-ring, {p['border_strong']});
-    box-shadow: 0 7px 18px rgba(15, 23, 42, 0.075);
+    border-color: var(--accent, {p['neon']});
+    box-shadow: 0 7px 22px var(--accent-glow, rgba(15, 159, 143, 0.12));
 }}
 /* Halo do acento no canto — único "brilho" que sobrou, bem discreto. */
 .kpi-card::after {{
@@ -415,12 +415,27 @@ div[class*="st-key-ppcpanel-"] {{
     margin: 0 0 2px 0 !important;
     line-height: 1.1 !important;
 }}
+.kpi-card__content {{
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}}
 .kpi-card__subtitle {{
     font-size: 12px;
     font-weight: 500;
     color: {p['text_muted']};
     margin: 0 !important;
     line-height: 1.4 !important;
+}}
+
+/* Cards sem pílula ou barra mantêm a mesma altura dos demais. O bloco de
+   valor + texto informativo desce inteiro para o rodapé, preservando o
+   cabeçalho no topo e evitando conteúdo solto no meio do card. */
+.kpi-card--compact {{
+    min-height: 200px;
+}}
+.kpi-card--compact .kpi-card__content {{
+    margin-top: auto;
 }}
 
 /* Chip "25% do total" — mesma pílula translúcida da referência. */
@@ -458,16 +473,18 @@ div[class*="st-key-ppcpanel-"] {{
     align-items: flex-start;
     gap: 14px;
     background: {p['surface']};
-    border: 1px solid {p['border']};
+    border: 1px solid var(--accent-ring, {p['border']});
     border-radius: var(--ppc-radius);
     padding: 18px 20px;
     height: 100%;
-    box-shadow: 0 3px 10px rgba(15, 23, 42, 0.045);
+    min-height: 144px;
+    box-sizing: border-box;
+    box-shadow: 0 4px 15px var(--accent-glow, rgba(15, 159, 143, 0.10));
     transition: border-color .18s ease, box-shadow .18s ease;
 }}
 .destaque-card:hover {{
-    border-color: var(--accent-ring, {p['border_strong']});
-    box-shadow: 0 7px 18px rgba(15, 23, 42, 0.075);
+    border-color: var(--accent, {p['neon']});
+    box-shadow: 0 7px 22px var(--accent-glow, rgba(15, 159, 143, 0.12));
 }}
 .destaque-card__medallion {{
     width: 38px;
@@ -482,6 +499,7 @@ div[class*="st-key-ppcpanel-"] {{
 }}
 .destaque-card__body {{
     min-width: 0;
+    align-self: flex-start;
 }}
 .destaque-card__tag {{
     display: block;
@@ -523,12 +541,13 @@ div[class*="st-key-ppcpanel-"] {{
     gap: 12px;
     padding: 10px 14px;
     background: {p['surface_alt']};
-    border: 1px solid {p['border']};
+    border: 1px solid var(--accent-ring, {p['border']});
     border-radius: var(--ppc-radius-sm);
-    transition: border-color .18s ease;
+    transition: border-color .18s ease, box-shadow .18s ease;
 }}
 .rank-row:hover {{
-    border-color: var(--accent-ring, {p['border_strong']});
+    border-color: var(--accent, {p['neon']});
+    box-shadow: 0 4px 14px var(--accent-glow, rgba(15, 159, 143, 0.10));
 }}
 /* O número é o marcador de posição — círculo cheio na cor da colocação,
    com texto escuro por cima, como no bloco "Top 3" da referência. */
@@ -572,9 +591,10 @@ div[class*="st-key-ppcpanel-"] {{
 /* ---------- Tabela estilizada (HTML custom) ---------- */
 .styled-table-wrapper {{
     background: {p['surface']};
-    border: 1px solid {p['border']};
+    border: 1px solid {rgba(p['neon'], 0.28)};
     border-radius: var(--ppc-radius);
-    padding: 5px;
+    padding: 6px;
+    box-shadow: 0 5px 18px {rgba(p['neon'], 0.09)};
 }}
 
 /* Variante "ajustada ao conteúdo": tabelas de poucas colunas (ex.: mês +
@@ -594,6 +614,7 @@ div[class*="st-key-ppcpanel-"] {{
 .ppc-table-scroll {{
     overflow: auto;
     border-radius: var(--ppc-radius-sm);
+    scrollbar-color: {rgba(p['neon'], 0.38)} {p['surface_inset']};
 }}
 
 table.ppc-table {{
@@ -610,16 +631,18 @@ table.ppc-table thead th {{
     position: sticky;
     top: 0;
     z-index: 1;
-    background: {p['table_header_start']};
-    color: {p['text_muted']};
+    background: {rgba(p['neon'], 0.10)};
+    color: {p['table_badge_text']};
     font-family: 'Inter', sans-serif;
-    font-weight: 600;
+    font-weight: 700;
     font-size: 11px;
     letter-spacing: .07em;
     text-transform: uppercase;
     text-align: center;
-    padding: 10px 14px;
+    padding: 12px 16px;
     white-space: nowrap;
+    border-bottom: 1px solid {rgba(p['neon'], 0.22)};
+    box-shadow: 0 1px 0 {rgba(p['neon'], 0.07)};
 }}
 table.ppc-table thead th:first-child {{ border-top-left-radius: var(--ppc-radius-sm); }}
 table.ppc-table thead th:last-child {{ border-top-right-radius: var(--ppc-radius-sm); }}
@@ -630,15 +653,21 @@ table.ppc-table thead th:last-child {{ border-top-right-radius: var(--ppc-radius
     background: {p['table_badge_bg']};
     color: {p['table_badge_text']};
     font-weight: 700;
-    padding: 2px 11px;
+    padding: 3px 11px;
     border-radius: 999px;
+    border: 1px solid {rgba(p['neon'], 0.18)};
+    box-shadow: 0 2px 8px {rgba(p['neon'], 0.08)};
 }}
 
 table.ppc-table tbody td {{
-    padding: 8px 14px;
+    padding: 11px 16px;
     color: {p['text']};
     border-bottom: 1px solid {p['border']};
     white-space: nowrap;
+    transition: background-color .15s ease, color .15s ease;
+}}
+table.ppc-table tbody td + td {{
+    border-left: 1px solid {rgba(p['border'], 0.72)};
 }}
 
 table.ppc-table tbody tr:nth-child(even) {{
@@ -648,7 +677,7 @@ table.ppc-table tbody tr:nth-child(odd) {{
     background: {p['surface']};
 }}
 table.ppc-table tbody tr:hover {{
-    background: rgba(15, 159, 143, 0.06);
+    background: {rgba(p['neon'], 0.075)};
 }}
 table.ppc-table tbody tr:last-child td {{
     border-bottom: none;
@@ -813,15 +842,15 @@ div[data-testid="stMultiSelect"] span[data-baseweb="tag"] {{
     position: relative;
     overflow: hidden;
     background: {p['surface']};
-    border: 1px solid {p['border']};
+    border: 1px solid var(--accent-ring, {p['border']});
     border-radius: 14px;
     padding: 14px 16px;
-    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.035);
+    box-shadow: 0 4px 14px var(--accent-glow, rgba(15, 159, 143, 0.09));
     transition: border-color .18s ease, box-shadow .18s ease;
 }}
 .an-card:hover {{
-    border-color: var(--accent-ring, {p['border_strong']});
-    box-shadow: 0 6px 15px rgba(15, 23, 42, 0.07);
+    border-color: var(--accent, {p['neon']});
+    box-shadow: 0 7px 20px var(--accent-glow, rgba(15, 159, 143, 0.12));
 }}
 .an-card__label {{
     font-size: 10px;

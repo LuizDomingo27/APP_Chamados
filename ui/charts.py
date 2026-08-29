@@ -260,11 +260,18 @@ def build_donut_option(
                     "formatter": "{c}\n{d}%",
                     "color": PALETTE["text"],
                     "fontFamily": _CHART_FONT,
-                    "fontSize": 11,
-                    "fontWeight": 600,
-                    "lineHeight": 14,
+                    "fontSize": 15,
+                    "fontWeight": 700,
+                    "lineHeight": 19,
                 },
-                "labelLine": {"length": 8, "length2": 8, "lineStyle": {"color": PALETTE["border"]}},
+                "labelLine": {
+                    "length": 12,
+                    "length2": 10,
+                    "lineStyle": {
+                        "color": PALETTE["border_strong"],
+                        "width": 1.25,
+                    },
+                },
                 "emphasis": {"scaleSize": 6},
             }
         ],
@@ -279,7 +286,7 @@ def build_donut_option(
                 "style": {
                     "text": str(total),
                     "fill": PALETTE["text"],
-                    "font": f"700 22px {_CHART_FONT}",
+                    "font": f"800 28px {_CHART_FONT}",
                     "textAlign": "center",
                 },
             },
@@ -290,7 +297,7 @@ def build_donut_option(
                 "style": {
                     "text": titulo_centro,
                     "fill": PALETTE["text_muted"],
-                    "font": f"500 11px {_CHART_FONT}",
+                    "font": f"600 13px {_CHART_FONT}",
                     "textAlign": "center",
                 },
             },
@@ -309,9 +316,12 @@ def build_categoria_bar_option(
     Esta função também é reaproveitada pelas tendências semanal/mensal
     (mesmo formato de colunas) — nesses casos ``sort_ascending`` deve vir
     False, pois a ordem cronológica das barras não pode ser embaralhada
-    pela ordenação por valor, e ``show_trend=True`` sobrepõe uma linha
-    acompanhando os mesmos valores das colunas, deixando a variação entre
-    os períodos mais fácil de enxergar.
+    pela ordenação por valor. Todas as visões usam somente barras: a linha
+    de variação foi removida para manter a leitura uniforme entre dia,
+    semana e mês.
+
+    ``show_trend`` é mantido apenas por compatibilidade com consumidores
+    anteriores e não adiciona mais uma série de linha.
     """
     if _COL_VALOR not in getattr(categoria_df, "columns", []):
         raise ValueError(f"A coluna '{_COL_VALOR}' não existe nos dados do gráfico de barras.")
@@ -348,60 +358,6 @@ def build_categoria_bar_option(
         }
     ]
 
-    y_axis: list[dict] = [
-        {
-            "type": "value",
-            "splitLine": {"show": False},
-            "axisLine": {"show": False},
-            "axisTick": {"show": False},
-            "axisLabel": {"show": False},
-        }
-    ]
-
-    if show_trend:
-        # A linha não repete o valor absoluto da coluna (isso só duplicava o
-        # rótulo do total) — em vez disso plota a variação percentual em
-        # relação ao período anterior, num eixo secundário próprio, já que a
-        # escala de "%" não tem relação com a escala de contagem das barras.
-        # O número da variação aparece apenas no tooltip: impresso sobre o
-        # gráfico ele cobria os rótulos de total das colunas.
-        pct_points: list[dict] = []
-        for i, valor in enumerate(valores):
-            anterior = valores[i - 1] if i > 0 else None
-            if not anterior:
-                pct_points.append({"value": None})
-                continue
-            variacao = round((valor - anterior) / anterior * 100, 1)
-            # Cor do ponto mantém o sinal de leitura rápida mesmo sem rótulo:
-            # lime para alta, pink para queda (mesma dupla da referência).
-            cor = PALETTE["lime"] if variacao >= 0 else PALETTE["danger"]
-            pct_points.append({"value": variacao, "itemStyle": {"color": cor}})
-
-        series.append(
-            {
-                "name": "Variação vs. período anterior (%)",
-                "type": "line",
-                "yAxisIndex": 1,
-                "data": pct_points,
-                "smooth": True,
-                "symbol": "circle",
-                "symbolSize": 7,
-                "z": 3,
-                "connectNulls": True,
-                "lineStyle": {"color": PALETTE["text_muted"], "width": 2, "type": "dashed"},
-                "itemStyle": {"borderColor": PALETTE["surface"], "borderWidth": 1.5},
-            }
-        )
-        y_axis.append(
-            {
-                "type": "value",
-                "splitLine": {"show": False},
-                "axisLine": {"show": False},
-                "axisTick": {"show": False},
-                "axisLabel": {"show": False},
-            }
-        )
-
     return {
         "tooltip": {**_TOOLTIP_BASE, "trigger": "axis", "axisPointer": {"type": "shadow"}},
         "grid": {"left": 20, "right": 20, "top": 36, "bottom": 70, "containLabel": True},
@@ -418,6 +374,12 @@ def build_categoria_bar_option(
             "axisTick": {"show": False},
             "splitLine": {"show": False},
         },
-        "yAxis": y_axis,
+        "yAxis": {
+            "type": "value",
+            "splitLine": {"show": False},
+            "axisLine": {"show": False},
+            "axisTick": {"show": False},
+            "axisLabel": {"show": False},
+        },
         "series": series,
     }
