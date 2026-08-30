@@ -412,7 +412,7 @@ def render_dropdown_all(label: str, options: list[str], state_key: str) -> list[
     filtro não precisam mudar.
     """
     widget_key = f"{state_key}_dropdown"
-    todas = "Todas"
+    todas = "Todos"
     escolhas = [todas, *(options or [])]
 
     # Reseta para "Todas" se a seleção atual não existe mais entre as
