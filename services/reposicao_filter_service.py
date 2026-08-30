@@ -3,7 +3,7 @@ services/reposicao_filter_service.py
 
 Aplica os filtros do módulo de Reposições sobre o DataFrame já
 enriquecido. Reaproveita filter_by_date_range, filter_by_oficinas,
-semana_options e filter_by_semanas de services.filter_service — são
+filtros de semana/mês e respectivas opções de services.filter_service — são
 genéricas, dependem só de COL_CRIADO_EM / COL_OFICINA, e são as mesmas
 usadas pela página de Chamados.
 """
@@ -16,12 +16,14 @@ import pandas as pd
 
 from services.filter_service import (
     filter_by_date_range,
+    filter_by_meses,
     filter_by_oficinas,
     filter_by_semanas,
+    mes_options,
     semana_options,
 )
 
-__all__ = ["apply_all_filters_reposicao", "semana_options"]
+__all__ = ["apply_all_filters_reposicao", "mes_options", "semana_options"]
 
 
 def apply_all_filters_reposicao(
@@ -30,9 +32,12 @@ def apply_all_filters_reposicao(
     end: date | None,
     semanas: list[str],
     oficinas: list[str],
+    meses: list[str] | None = None,
 ) -> pd.DataFrame:
     """Aplica todos os filtros de Reposições em sequência."""
     out = filter_by_date_range(df, start, end)
     out = filter_by_semanas(out, semanas)
     out = filter_by_oficinas(out, oficinas)
+    if meses is not None:
+        out = filter_by_meses(out, meses)
     return out

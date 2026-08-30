@@ -35,7 +35,7 @@ from core.config import (
 )
 from core.utils import format_decimal, format_int, safe_unique_sorted
 from services.data_loader import load_dados_consolidados, validate_workbook
-from services.filter_service import apply_all_filters, semana_options
+from services.filter_service import apply_all_filters, mes_options, semana_options
 from services.kpi_service import (
     agregado_por_coluna,
     calcular_analise,
@@ -208,8 +208,8 @@ def _render_filtros(df):
     with st.expander("Filtros", expanded=True):
         # Campos e botões na MESMA linha; vertical_alignment="bottom" alinha
         # os botões (sem rótulo) pela base dos campos (que têm rótulo acima).
-        c_periodo, c_numero, c_semana, c_oficina, c_analise, c_reset = st.columns(
-            [2, 1.4, 1.5, 2.2, 1.3, 1.6], vertical_alignment="bottom"
+        c_periodo, c_mes, c_numero, c_semana, c_oficina, c_analise, c_reset = st.columns(
+            [2, 1.35, 1.25, 1.5, 2, 1.3, 1.6], vertical_alignment="bottom"
         )
         with c_periodo:
             date_range = st.date_input(
@@ -219,6 +219,10 @@ def _render_filtros(df):
                 max_value=max_date.date(),
                 format="DD/MM/YYYY",
                 key="ppc_date_range",
+            )
+        with c_mes:
+            meses_selecionados = render_dropdown_all(
+                "Mês", mes_options(df), "_select_all_meses_filter"
             )
         with c_numero:
             numero_chamado = st.text_input(
@@ -261,7 +265,15 @@ def _render_filtros(df):
     start, end = (date_range if isinstance(date_range, tuple) and len(date_range) == 2
                   else (min_date.date(), max_date.date()))
 
-    return start, end, numero_chamado, oficinas_selecionadas, semanas_selecionadas, abrir_analise
+    return (
+        start,
+        end,
+        numero_chamado,
+        oficinas_selecionadas,
+        semanas_selecionadas,
+        meses_selecionados,
+        abrir_analise,
+    )
 
 
 def _render_dashboard(df) -> None:
@@ -270,8 +282,10 @@ def _render_dashboard(df) -> None:
     # que continue aparecendo ACIMA da barra de filtros.
     slot_header = st.container()
 
-    start, end, numero_chamado, oficinas, semanas, abrir_analise = _render_filtros(df)
-    filtrado = apply_all_filters(df, start, end, numero_chamado, oficinas, semanas)
+    start, end, numero_chamado, oficinas, semanas, meses, abrir_analise = _render_filtros(df)
+    filtrado = apply_all_filters(
+        df, start, end, numero_chamado, oficinas, semanas, meses
+    )
 
     with slot_header:
         render_header(

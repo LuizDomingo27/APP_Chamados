@@ -49,7 +49,11 @@ from services.material_service import (
     top_materias_primas,
     top_partes_peca,
 )
-from services.reposicao_filter_service import apply_all_filters_reposicao, semana_options
+from services.reposicao_filter_service import (
+    apply_all_filters_reposicao,
+    mes_options,
+    semana_options,
+)
 from services.reposicao_kpi_service import (
     calcular_analise_reposicao,
     calcular_destaques_reposicao,
@@ -201,8 +205,8 @@ def _render_filtros(df):
     with st.expander("Filtros", expanded=True):
         # Campos e botões na MESMA linha; vertical_alignment="bottom" alinha
         # os botões (sem rótulo) pela base dos campos (que têm rótulo acima).
-        c_periodo, c_semana, c_oficina, c_analise, c_reset = st.columns(
-            [2, 1.5, 2.2, 1.3, 1.6], vertical_alignment="bottom"
+        c_periodo, c_mes, c_semana, c_oficina, c_analise, c_reset = st.columns(
+            [2, 1.35, 1.5, 2, 1.3, 1.6], vertical_alignment="bottom"
         )
         with c_periodo:
             date_range = st.date_input(
@@ -212,6 +216,10 @@ def _render_filtros(df):
                 max_value=max_date.date(),
                 format="DD/MM/YYYY",
                 key="rep_date_range",
+            )
+        with c_mes:
+            meses_selecionados = render_dropdown_all(
+                "Mês", mes_options(df), "_select_all_meses_filter_rep"
             )
         with c_semana:
             semanas_selecionadas = render_dropdown_all(
@@ -252,7 +260,14 @@ def _render_filtros(df):
     start, end = (date_range if isinstance(date_range, tuple) and len(date_range) == 2
                   else (min_date.date(), max_date.date()))
 
-    return start, end, semanas_selecionadas, oficinas_selecionadas, abrir_analise
+    return (
+        start,
+        end,
+        meses_selecionados,
+        semanas_selecionadas,
+        oficinas_selecionadas,
+        abrir_analise,
+    )
 
 
 def _render_dashboard(df) -> None:
@@ -261,8 +276,8 @@ def _render_dashboard(df) -> None:
     # que continue aparecendo ACIMA da barra de filtros.
     slot_header = st.container()
 
-    start, end, semanas, oficinas, abrir_analise = _render_filtros(df)
-    filtrado = apply_all_filters_reposicao(df, start, end, semanas, oficinas)
+    start, end, meses, semanas, oficinas, abrir_analise = _render_filtros(df)
+    filtrado = apply_all_filters_reposicao(df, start, end, semanas, oficinas, meses)
 
     with slot_header:
         render_header(

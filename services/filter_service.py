@@ -84,6 +84,46 @@ def filter_by_semanas(df: pd.DataFrame, semanas: list[str]) -> pd.DataFrame:
     return df[rotulos.isin(semanas)]
 
 
+_MESES_PT_BR = (
+    "Janeiro",
+    "Fevereiro",
+    "Março",
+    "Abril",
+    "Maio",
+    "Junho",
+    "Julho",
+    "Agosto",
+    "Setembro",
+    "Outubro",
+    "Novembro",
+    "Dezembro",
+)
+
+
+def _mes_label(periodo: pd.Period) -> str:
+    """Rótulo legível e estável para um mês de calendário."""
+    return f"{_MESES_PT_BR[periodo.month - 1]}/{periodo.year}"
+
+
+def mes_options(df: pd.DataFrame) -> list[str]:
+    """Lista os meses disponíveis, do mais recente para o mais antigo."""
+    serie = df[COL_CRIADO_EM].dropna()
+    if serie.empty:
+        return []
+    meses = sorted(serie.dt.to_period("M").unique(), reverse=True)
+    return [_mes_label(mes) for mes in meses]
+
+
+def filter_by_meses(df: pd.DataFrame, meses: list[str]) -> pd.DataFrame:
+    """Filtra pelos meses selecionados. Lista vazia = sem filtro."""
+    if not meses:
+        return df
+    rotulos = df[COL_CRIADO_EM].dt.to_period("M").map(
+        lambda mes: _mes_label(mes) if pd.notna(mes) else None
+    )
+    return df[rotulos.isin(meses)]
+
+
 def apply_all_filters(
     df: pd.DataFrame,
     start: date | None,
@@ -91,6 +131,7 @@ def apply_all_filters(
     numero_chamado: str,
     oficinas: list[str],
     semanas: list[str] | None = None,
+    meses: list[str] | None = None,
 ) -> pd.DataFrame:
     """Aplica todos os filtros em sequência."""
     out = filter_by_date_range(df, start, end)
@@ -98,4 +139,6 @@ def apply_all_filters(
     out = filter_by_oficinas(out, oficinas)
     if semanas is not None:
         out = filter_by_semanas(out, semanas)
+    if meses is not None:
+        out = filter_by_meses(out, meses)
     return out
