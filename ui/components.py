@@ -103,16 +103,14 @@ def _percentual(value: object) -> float | None:
 # ---------------------------------------------------------------------------
 def render_header(title: str, subtitle: str, icon: str = "clipboard") -> None:
     """Cabeçalho e estilos, inclusive quando a página é aberta diretamente."""
+    st.markdown(get_custom_css(), unsafe_allow_html=True)
     st.markdown(
-        get_custom_css() + f"""
-        <div class="app-header">
-            <div class="app-header__icon">{svg_icon(icon)}</div>
-            <div>
-                <p class="app-header__title">{_texto(title, vazio="")}</p>
-                <p class="app-header__subtitle">{_texto(subtitle, vazio="")}</p>
-            </div>
-        </div>
-        """,
+        '<div class="app-header">'
+        f'<div class="app-header__icon">{svg_icon(icon)}</div>'
+        '<div>'
+        f'<p class="app-header__title">{_texto(title, vazio="")}</p>'
+        f'<p class="app-header__subtitle">{_texto(subtitle, vazio="")}</p>'
+        '</div></div>',
         unsafe_allow_html=True,
     )
 
