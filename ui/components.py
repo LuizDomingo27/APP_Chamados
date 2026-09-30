@@ -30,6 +30,7 @@ import streamlit as st
 from core.config import COL_OFICINA, PALETTE, SERIES_COLORS, STATUS_COLORS
 from core.utils import format_date_br, format_int, hex_to_rgb, rgba
 from ui.icons import icon as svg_icon
+from ui.styles import get_custom_css
 
 # Acento padrão usado quando o chamador não informa cor (ou informa uma
 # inválida) — a cor primária do tema.
@@ -101,9 +102,9 @@ def _percentual(value: object) -> float | None:
 # Estrutura de página
 # ---------------------------------------------------------------------------
 def render_header(title: str, subtitle: str, icon: str = "clipboard") -> None:
-    """Cabeçalho da página. `icon` é o NOME de um ícone de ui/icons.py."""
+    """Cabeçalho e estilos, inclusive quando a página é aberta diretamente."""
     st.markdown(
-        f"""
+        get_custom_css() + f"""
         <div class="app-header">
             <div class="app-header__icon">{svg_icon(icon)}</div>
             <div>

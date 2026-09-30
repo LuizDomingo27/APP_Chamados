@@ -87,7 +87,7 @@ _PATHS: dict[str, str] = {
 _FALLBACK = "dot"
 
 
-def _svg(inner: str, size: str = "100%") -> str:
+def _svg(inner: str, size: str = "24") -> str:
     return (
         f'<svg viewBox="0 0 24 24" width="{size}" height="{size}" fill="none" '
         'stroke="currentColor" stroke-width="1.8" stroke-linecap="round" '
@@ -96,7 +96,7 @@ def _svg(inner: str, size: str = "100%") -> str:
     )
 
 
-def icon(name: str, size: str = "100%") -> str:
+def icon(name: str, size: str = "24") -> str:
     """
     Devolve o markup SVG do ícone `name`, herdando cor de `currentColor`.
 
