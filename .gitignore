@@ -223,3 +223,7 @@ __marimo__/
 
 # Cache local do último arquivo enviado em cada página (services/upload_cache.py)
 .cache_uploads/
+
+# Planilha original de reposições — uso apenas local
+/REPOSIÇÃO OFICINAS DE COSTURA.xlsx
+/qa-ranking-alinhado.png

@@ -430,6 +430,41 @@ def render_dropdown_all(label: str, options: list[str], state_key: str) -> list[
 # ---------------------------------------------------------------------------
 # Tabela
 # ---------------------------------------------------------------------------
+def render_recurrence_table(df: pd.DataFrame) -> None:
+    """Ranking com cabeçalho em duas linhas, posição discreta e total em destaque."""
+    week_columns = list(df.columns[2:6])
+    headers = []
+    for column in week_columns:
+        week, dates = str(column).split(" (", 1)
+        headers.append(
+            f'<th scope="col">{_texto(week)}<span class="recurrence-dates">{_texto(dates.rstrip(")"))}</span></th>'
+        )
+    rows = []
+    for _, row in df.iterrows():
+        weeks = ''.join(f'<td class="recurrence-number">{format_int(row[c])}</td>' for c in week_columns)
+        rows.append(
+            '<tr>'
+            f'<td class="recurrence-position">{format_int(row["Posição"])}</td>'
+            f'<th scope="row" class="recurrence-workshop">{_texto(row[COL_OFICINA])}</th>'
+            f'{weeks}<td class="recurrence-total">{format_int(row["Total"])}</td>'
+            '</tr>'
+        )
+    html = (
+        '<div class="recurrence-summary">'
+        f'<span><strong>{format_int(len(df))}</strong> oficinas recorrentes</span>'
+        f'<span><strong>{format_int(df["Total"].sum())}</strong> solicitações nas 4 semanas</span>'
+        '</div><div class="recurrence-scroll" role="region" aria-label="Ranking de oficinas recorrentes" tabindex="0">'
+        '<table class="recurrence-table"><caption class="recurrence-sr">Oficinas com solicitações em todas as quatro semanas, ordenadas por total</caption>'
+        '<colgroup><col style="width:4%"><col style="width:44%">'
+        '<col style="width:11%"><col style="width:11%"><col style="width:11%"><col style="width:11%"><col style="width:8%"></colgroup>'
+        '<thead><tr><th scope="col" class="recurrence-position">#</th>'
+        '<th scope="col" class="recurrence-workshop">Oficina</th>'
+        f'{"".join(headers)}<th scope="col" class="recurrence-total">Total</th></tr></thead>'
+        f'<tbody>{"".join(rows)}</tbody></table></div>'
+    )
+    st.markdown(html, unsafe_allow_html=True)
+
+
 def render_styled_dataframe(
     df: pd.DataFrame,
     date_columns: list[str] | None = None,

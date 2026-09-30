@@ -30,6 +30,7 @@ from core.config import (
     OFICINAS_OFICIAIS_RAW,
 )
 from core.text_normalize import (
+    clean_text,
     build_normalized_alias_map,
     build_normalized_key_set,
     normalize_company_key,
@@ -43,9 +44,9 @@ _RE_SUFIXO_MP = re.compile(
     re.IGNORECASE,
 )
 
-_RE_NUMERO = re.compile(r"CHAMADO\s*Nº-(\d+)")
-_RE_OFICINA = re.compile(r"OFICINA-(.*?)\n", re.DOTALL)
-_RE_SOLICITACAO = re.compile(r"SOLICITAÇÃO-\s*(.*)$", re.DOTALL)
+_RE_NUMERO = re.compile(r"CHAMADO\s*N[º°o]\s*-\s*(\d+)", re.IGNORECASE)
+_RE_OFICINA = re.compile(r"OFICINA\s*-\s*(.*?)(?=\r?\n|\s*-?\s*SOLICITA[ÇC][ÃA]O\s*-|$)", re.DOTALL | re.IGNORECASE)
+_RE_SOLICITACAO = re.compile(r"SOLICITA[ÇC][ÃA]O\s*-\s*(.*)$", re.DOTALL | re.IGNORECASE)
 
 _VAZIO = "Não informado"
 
@@ -60,7 +61,7 @@ def _extract_one(pattern: re.Pattern, text: str) -> str | None:
 
 def parse_nome_tarefa(nome_tarefa: str) -> dict[str, str | None]:
     """Extrai número do chamado, oficina e tipo de solicitação de um texto."""
-    text = str(nome_tarefa or "")
+    text = clean_text(nome_tarefa)
     return {
         COL_NUM_CHAMADO: _extract_one(_RE_NUMERO, text),
         COL_OFICINA: _extract_one(_RE_OFICINA, text) or _VAZIO,

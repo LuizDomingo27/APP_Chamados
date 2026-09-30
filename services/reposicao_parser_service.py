@@ -49,6 +49,7 @@ from core.config import (
     OFICINAS_OFICIAIS_RAW,
 )
 from core.motivo_normalize import canonicalize_motivo
+from core.text_normalize import clean_text
 from services.parser_service import canonicalize_oficinas, remove_invalid_oficinas
 
 _VAZIO = "Não informado"
@@ -61,7 +62,7 @@ _VAZIO = "Não informado"
 # era reconhecido e todo o trecho "MALHA- 1000-" acabava colado no nome da
 # oficina — como o número muda a cada reposição, cada linha virava uma
 # "oficina" diferente e os totais por oficina saíam fragmentados.
-_RE_NUMERO = re.compile(r"^\s*(?:[A-Za-zÀ-ÿ]+-\s*)?(\d+)-")
+_RE_NUMERO = re.compile(r"^\s*(?:[A-Za-zÀ-ÿ]+\s*-\s*)?(\d+)\s*-")
 
 # Sufixos de razão social que marcam o fim do nome real da oficina. Usados
 # como rede de segurança: em algumas linhas o texto de "Parte da peça" no
@@ -98,7 +99,7 @@ def _extract_label(text: str, label: str) -> str | None:
     """Extrai o valor de um campo rotulado dentro de Notas (ex.: 'Motivo:
     valor'). Cada campo ocupa uma linha, então o valor vai até a próxima
     quebra de linha ou o fim do texto."""
-    match = re.search(rf"{re.escape(label)}:\s*(.*?)(?:\n|$)", text, re.DOTALL)
+    match = re.search(rf"^[ \t]*{re.escape(label)}[ \t]*:[ \t]*([^\r\n]*)", text, re.MULTILINE | re.IGNORECASE)
     if not match:
         return None
     value = match.group(1).strip()
@@ -108,8 +109,8 @@ def _extract_label(text: str, label: str) -> str | None:
 def parse_reposicao_row(nome_tarefa: str, notas: str) -> dict[str, str | None]:
     """Extrai número da reposição, oficina, ordem de produção, parte da
     peça e motivo de uma linha da planilha de Reposições."""
-    nome = str(nome_tarefa or "")
-    notas_txt = str(notas or "")
+    nome = clean_text(nome_tarefa)
+    notas_txt = clean_text(notas)
 
     numero_match = _RE_NUMERO.match(nome)
     numero = numero_match.group(1) if numero_match else None
@@ -120,10 +121,23 @@ def parse_reposicao_row(nome_tarefa: str, notas: str) -> dict[str, str | None]:
     motivo = _extract_label(notas_txt, "Motivo")
     quantidade = _extract_label(notas_txt, "Quantidade")
 
+    # A ordem no título pode divergir das Notas. Retira apenas um token
+    # de nove dígitos delimitado por hífens, preservando nomes empresariais.
+    ordem_titulo = re.search(r"(?:^|-)\s*(\d{9})\s*(?=-|$)", remainder)
+    if not ordem and ordem_titulo:
+        ordem = ordem_titulo.group(1)
+    if not parte:
+        # Fallback só quando o título tem o formato OP-oficina-parte.
+        fallback = re.match(r"\s*\d{9}\s*-\s*(.+?)\s+-\s+(.+)$", remainder)
+        if fallback:
+            parte = fallback.group(2).strip()
+
     # Elimina do texto restante a ordem de produção e a parte da peça já
     # conhecidas (via Notas) — o que sobra é o nome da oficina, não
     # importa em que posição elas apareciam no "Nome da tarefa".
     oficina = remainder
+    if ordem_titulo:
+        oficina = oficina[:ordem_titulo.start(1)] + oficina[ordem_titulo.end(1):]
     if ordem:
         oficina = oficina.replace(ordem, "")
     if parte:
@@ -171,8 +185,13 @@ def enrich_with_parsed_fields_reposicao(df: pd.DataFrame) -> pd.DataFrame:
     para os KPIs é sempre o cadastrado, não a grafia mais frequente da
     planilha.
     """
+    if df.empty:
+        out = df.copy()
+        for col in [COL_NUM_REPOSICAO, COL_OFICINA, COL_ORDEM_PRODUCAO, COL_PARTE_PECA, COL_MOTIVO, COL_QUANTIDADE_REPOSICAO]:
+            out[col] = pd.Series(index=out.index, dtype="string")
+        return out
     parsed = df.apply(
-        lambda row: parse_reposicao_row(row[COL_NOME_TAREFA], row[COL_NOTAS]),
+        lambda row: parse_reposicao_row(row[COL_NOME_TAREFA], row.get(COL_NOTAS)),
         axis=1,
     ).apply(pd.Series)
 
@@ -195,6 +214,6 @@ def enrich_with_parsed_fields_reposicao(df: pd.DataFrame) -> pd.DataFrame:
     # (ex.: "    TRIAGEM", "AVIAMENTO ") — não são grafias divergentes,
     # só ruído de digitação, então um strip simples já resolve.
     if COL_CATEGORIA in out.columns:
-        out[COL_CATEGORIA] = out[COL_CATEGORIA].astype(str).str.strip()
+        out[COL_CATEGORIA] = out[COL_CATEGORIA].map(lambda v: clean_text(v) or _VAZIO)
 
     return out

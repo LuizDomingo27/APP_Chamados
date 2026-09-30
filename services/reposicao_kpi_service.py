@@ -151,11 +151,11 @@ def enrich_com_indicadores_temporais(df: pd.DataFrame) -> pd.DataFrame:
     pendente_mask = out[COL_STATUS].isin([STATUS_NAO_INICIADO, STATUS_EM_ANDAMENTO])
     concluida_mask = out[COL_STATUS] == STATUS_CONCLUIDA
 
-    dias_aberto = (agora - out[COL_CRIADO_EM]).dt.days
+    dias_aberto = (agora - out[COL_CRIADO_EM].dt.normalize()).dt.days.clip(lower=0)
     out[COL_DIAS_ABERTO] = pd.Series(pd.NA, index=out.index, dtype="Int64")
     out.loc[pendente_mask, COL_DIAS_ABERTO] = dias_aberto[pendente_mask].astype("Int64")
 
-    tempo_atendimento = (out[COL_CONCLUIDO_EM] - out[COL_CRIADO_EM]).dt.total_seconds() / 86400
+    tempo_atendimento = ((out[COL_CONCLUIDO_EM] - out[COL_CRIADO_EM]).dt.total_seconds() / 86400).clip(lower=0)
     out[COL_TEMPO_ATENDIMENTO_DIAS] = pd.NA
     out.loc[concluida_mask, COL_TEMPO_ATENDIMENTO_DIAS] = tempo_atendimento[concluida_mask].round(1)
 
@@ -180,10 +180,47 @@ def oficinas_com_reposicao_pendente(df: pd.DataFrame) -> pd.DataFrame:
     agora = pd.Timestamp.now().normalize()
     agrupado = (
         pendentes.groupby(COL_OFICINA, dropna=False)[COL_CRIADO_EM]
-        .agg(["count", "min"])
+        .agg(["size", "min"])
         .reset_index()
     )
     agrupado.columns = [COL_OFICINA, "Qtd. Pendente", "Solicitação Mais Antiga"]
-    agrupado["Dias em Aberto"] = (agora - agrupado["Solicitação Mais Antiga"]).dt.days
+    agrupado["Dias em Aberto"] = (agora - agrupado["Solicitação Mais Antiga"].dt.normalize()).dt.days.clip(lower=0)
     agrupado = agrupado.sort_values("Dias em Aberto", ascending=False).reset_index(drop=True)
     return agrupado[colunas_saida]
+
+
+def ranking_oficinas_ultimas_semanas(
+    df: pd.DataFrame, oficinas: list[str] | None = None,
+) -> tuple[pd.DataFrame, pd.Timestamp | None, pd.Timestamp | None]:
+    """Quatro semanas consecutivas até a última criação da base, incluindo a parcial.
+
+    Inclui apenas oficinas com solicitações em TODAS as quatro semanas.
+    Conta linhas, sem deduplicar números de reposição nem excluir categorias.
+    A referência é calculada antes do filtro de oficina.
+    """
+    dates = df[COL_CRIADO_EM].dropna()
+    if dates.empty:
+        return pd.DataFrame(), None, None
+    reference = dates.max().normalize()
+    last_week = reference.to_period("W-SUN").start_time
+    weeks = pd.date_range(last_week - pd.Timedelta(weeks=3), last_week, freq="7D")
+    labels = [
+        f"Sem. {w.isocalendar().week:02d}/{w.isocalendar().year} ({w:%d/%m}–{min(w + pd.Timedelta(days=6), reference):%d/%m})"
+        for w in weeks
+    ]
+    selected = df[df[COL_CRIADO_EM].ge(weeks[0]) & df[COL_CRIADO_EM].lt(reference + pd.Timedelta(days=1))].copy()
+    if oficinas:
+        selected = selected[selected[COL_OFICINA].isin(oficinas)]
+    if selected.empty:
+        return pd.DataFrame(columns=["Posição", COL_OFICINA, *labels, "Total", "Semanas com Solicitação"]), weeks[0], reference
+    selected["_semana"] = selected[COL_CRIADO_EM].dt.to_period("W-SUN").dt.start_time
+    counts = pd.crosstab(selected[COL_OFICINA], selected["_semana"]).reindex(columns=weeks, fill_value=0)
+    counts.columns = labels
+    counts["Total"] = counts.sum(axis=1)
+    counts["Semanas com Solicitação"] = counts[labels].gt(0).sum(axis=1)
+    counts = counts[counts["Semanas com Solicitação"].eq(4)]
+    counts = counts.reset_index().sort_values(
+        ["Total", "Semanas com Solicitação", COL_OFICINA], ascending=[False, False, True],
+    ).reset_index(drop=True)
+    counts.insert(0, "Posição", range(1, len(counts) + 1))
+    return counts, weeks[0], reference

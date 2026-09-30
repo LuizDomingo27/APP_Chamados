@@ -97,6 +97,7 @@ _CACHE_SLOT = "chamados"
 # invalide o cache — sem isso o dashboard segue mostrando os nomes
 # calculados pela versão anterior das regras.
 _REGRAS_OFICINA = canonicalizacao_fingerprint(
+    "formato_dados_v2",
     OFICINAS_OFICIAIS_RAW,
     OFICINA_ALIASES_RAW,
     OFICINA_INVALID_NAMES_RAW,

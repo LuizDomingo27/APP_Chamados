@@ -39,7 +39,7 @@ def filter_by_numero_chamado(df: pd.DataFrame, termo: str) -> pd.DataFrame:
     termo = termo.strip()
     if not termo:
         return df
-    return df[df[COL_NUM_CHAMADO].astype(str).str.contains(termo, case=False, na=False)]
+    return df[df[COL_NUM_CHAMADO].astype(str).str.contains(termo, case=False, na=False, regex=False)]
 
 
 def filter_by_oficinas(df: pd.DataFrame, oficinas: list[str]) -> pd.DataFrame:

@@ -589,6 +589,48 @@ div[class*="st-key-ppcpanel-"] {{
 }}
 
 /* ---------- Tabela estilizada (HTML custom) ---------- */
+.recurrence-summary {{
+    display: flex; flex-wrap: wrap; gap: 8px 28px;
+    color: {p['text_muted']}; font-size: 13px; margin: 8px 0 16px;
+}}
+.recurrence-summary strong {{ color: {p['text']}; font-weight: 700; }}
+.recurrence-scroll {{
+    max-height: 520px; overflow: auto; border: 1px solid {p['border']};
+    border-radius: 12px; scrollbar-color: {p['border_strong']} transparent;
+}}
+.recurrence-scroll:focus-visible {{ outline: 2px solid {p['neon']}; outline-offset: 3px; }}
+table.recurrence-table {{
+    width: 100%; min-width: 760px; border-collapse: separate; border-spacing: 0;
+    font-size: 13px; font-variant-numeric: tabular-nums; table-layout: fixed;
+}}
+table.recurrence-table thead th {{
+    position: sticky; top: 0; z-index: 1; background: {p['surface_inset']};
+    color: {p['text_muted']}; font-size: 12px; font-weight: 600;
+    padding: 14px 16px; border: 0; border-bottom: 1px solid {p['border']};
+    text-align: center; white-space: nowrap;
+}}
+.recurrence-dates {{ display: block; font-size: 11px; font-weight: 400; margin-top: 4px; }}
+table.recurrence-table tbody td, table.recurrence-table tbody th {{
+    padding: 15px 16px; border: 0; border-bottom: 1px solid {p['border']};
+    color: {p['text']}; background: {p['surface']}; line-height: 1.4;
+}}
+table.recurrence-table .recurrence-position {{
+    width: 48px; text-align: center; color: {p['text_muted']}; font-weight: 400;
+}}
+table.recurrence-table .recurrence-workshop {{
+    text-align: left; font-weight: 500; overflow-wrap: anywhere;
+}}
+.recurrence-number {{ text-align: center; }}
+table.recurrence-table .recurrence-total {{
+    text-align: center; color: {p['table_badge_text']}; font-weight: 700;
+    background: {rgba(p['neon'], 0.06)};
+}}
+table.recurrence-table tbody tr:hover td, table.recurrence-table tbody tr:hover th {{
+    background: {p['surface_alt']};
+}}
+table.recurrence-table tbody tr:last-child td, table.recurrence-table tbody tr:last-child th {{ border-bottom: 0; }}
+.recurrence-sr {{ position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }}
+
 .styled-table-wrapper {{
     background: {p['surface']};
     border: 1px solid {rgba(p['neon'], 0.28)};

@@ -17,6 +17,7 @@ import sys
 from pathlib import Path
 
 import streamlit as st
+import pandas as pd
 
 _ROOT = Path(__file__).resolve().parents[1]
 if str(_ROOT) not in sys.path:
@@ -36,6 +37,7 @@ from core.config import (
 )
 from core.utils import format_decimal, format_int, safe_unique_sorted
 from services.data_loader import load_dados_consolidados, validate_workbook
+from services.data_format_service import normalize_reposicao_formats
 from services.kpi_service import (
     agregado_por_coluna,
     contagem_por_status,
@@ -59,6 +61,7 @@ from services.reposicao_kpi_service import (
     calcular_destaques_reposicao,
     enrich_com_indicadores_temporais,
     oficinas_com_reposicao_pendente,
+    ranking_oficinas_ultimas_semanas,
     tempo_atendimento_stats,
     tendencia_mensal,
     tendencia_semanal,
@@ -81,6 +84,7 @@ from ui.components import (
     render_header,
     render_kpi_card,
     render_rank_list,
+    render_recurrence_table,
     render_section_title,
     render_status_kpis,
     render_styled_dataframe,
@@ -109,6 +113,7 @@ _CACHE_SLOT = "reposicoes"
 # invalide o cache — sem isso o dashboard segue mostrando os nomes
 # calculados pela versão anterior das regras.
 _REGRAS_OFICINA = canonicalizacao_fingerprint(
+    "formato_dados_v2",
     OFICINAS_OFICIAIS_RAW,
     OFICINA_ALIASES_RAW,
     OFICINA_INVALID_NAMES_RAW,
@@ -121,10 +126,9 @@ _REGRAS_OFICINA = canonicalizacao_fingerprint(
 def _load_and_enrich(file_bytes: bytes, regras_oficina: str):
     df = load_dados_consolidados(io.BytesIO(file_bytes))
     df = enrich_with_parsed_fields_reposicao(df)
-    df = enrich_com_indicadores_temporais(df)
     # A linha de matéria-prima depende de "Parte da peça" já extraída pelo
     # parser, então entra por último no pipeline.
-    return enrich_com_materia_prima(df)
+    return normalize_reposicao_formats(enrich_com_materia_prima(df))
 
 
 def _render_upload_screen() -> None:
@@ -286,6 +290,19 @@ def _render_dashboard(df) -> None:
             icon="spool",
         )
 
+    ranking, inicio_ranking, fim_ranking = ranking_oficinas_ultimas_semanas(df, oficinas)
+    with panel("Recorrência de Oficinas — Últimas 4 Semanas", key="rep-recorrencia"):
+        if inicio_ranking is not None:
+            st.caption(
+                f"{inicio_ranking:%d/%m/%Y} a {fim_ranking:%d/%m/%Y} · "
+                "Oficinas com solicitações em todas as 4 semanas · Última semana parcial"
+            )
+            st.caption("Janela pela última data da planilha. Apenas o filtro de oficina é aplicado a este ranking.")
+        if ranking.empty:
+            st.info("Nenhuma oficina teve solicitações em todas as quatro semanas nesta seleção.")
+        else:
+            render_recurrence_table(ranking)
+
     if filtrado.empty:
         st.warning("Nenhuma reposição encontrada para os filtros selecionados.")
         return
@@ -326,7 +343,8 @@ def _render_dashboard(df) -> None:
         )
     with p2:
         if not oficinas_pendentes_df.empty:
-            dias_max = int(oficinas_pendentes_df["Dias em Aberto"].max())
+            espera = oficinas_pendentes_df["Dias em Aberto"].max()
+            dias_max = int(espera) if pd.notna(espera) else None
             oficina_mais_antiga = str(oficinas_pendentes_df.iloc[0][COL_OFICINA])
             qtd_oficinas_pendentes = int(oficinas_pendentes_df[COL_OFICINA].nunique())
             sub1, sub2 = st.columns(2)
@@ -341,7 +359,7 @@ def _render_dashboard(df) -> None:
             with sub2:
                 render_kpi_card(
                     "Espera Mais Longa",
-                    f"{dias_max} dia(s)",
+                    f"{dias_max} dia(s)" if dias_max is not None else "Sem data",
                     subtitle=f"{oficina_mais_antiga}",
                     accent=PALETTE["amber"],
                     icon="calendar",
@@ -519,7 +537,7 @@ def main() -> None:
     # exceção NÃO é engolida: a mensagem real vai para a tela e o detalhe
     # completo fica num expander para quem for investigar.
     try:
-        df = _load_and_enrich(file_bytes, _REGRAS_OFICINA)
+        df = enrich_com_indicadores_temporais(_load_and_enrich(file_bytes, _REGRAS_OFICINA))
     except Exception as exc:  # noqa: BLE001 - fronteira de UI: reporta e segue
         st.error(
             "Não foi possível processar a planilha de Reposições: "

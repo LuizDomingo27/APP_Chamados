@@ -81,6 +81,30 @@ O campo "Nome da tarefa" da planilha de Reposições concentra número da reposi
 
 ## Observações técnicas
 
+### Recorrência de oficinas e formatos de dados
+
+A página de Reposições inclui uma tabela de ranking com quatro semanas
+consecutivas, de segunda a domingo, ancoradas na data de criação mais recente
+da planilha. A semana dessa data é incluída mesmo quando parcial. A tabela
+inclui somente oficinas com pelo menos uma solicitação em cada uma das quatro
+semanas e mostra posição, oficina, quantidade em cada semana e total.
+A ordenação usa total decrescente, semanas com solicitação
+decrescente e nome da oficina como desempate. Semanas sem pedidos recebem zero.
+O filtro de oficina é aplicado; os filtros de período, mês e semana não mudam
+essa janela. Cada linha de tarefa conta como uma solicitação, incluindo
+reposições negadas conforme a regra vigente.
+
+O tratamento preserva `Parte da Peça Original` e `Quantidade Solicitada`.
+Variações de caixa, acento e espaços das partes são agrupadas, com aliases
+explícitos para Linha/Linhas, Fio/Fios e etiquetas. Quantidades simples ganham
+`Quantidade Numérica` e `Unidade da Quantidade`, sem somar unidades diferentes
+ou interpretar distribuições por tamanho. Notas vazias não capturam a próxima
+linha; títulos permitem recuperar a ordem e a parte quando faltam Notas.
+Quando a ordem do título diverge das Notas, o valor das Notas é preservado,
+mas o número do título é removido do nome da oficina.
+
+Verificação das regressões: `python -m unittest discover -s tests -v`.
+
 - Os gráficos usam **Apache ECharts** renderizado via `st.iframe` com HTML/JS
   (a lib `streamlit-echarts` está incompatível com o Streamlit instalado —
   essa abordagem evita a dependência extra e dá controle total de estilo).

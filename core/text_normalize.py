@@ -13,12 +13,19 @@ import re
 import unicodedata
 
 
+def clean_text(value: object) -> str:
+    """Texto de célula sem transformar ausências em 'nan' ou '<NA>'."""
+    if value is None or str(value).strip().lower() in {"nan", "nat", "<na>", "none"}:
+        return ""
+    return re.sub(r"[ \t]+", " ", str(value)).strip()
+
+
 def normalize_text_key(text: str) -> str:
     """
     Remove acentos, converte para maiúsculas e colapsa espaços extras.
     Ex.: "  Açaí  Confecções " -> "ACAI CONFECCOES".
     """
-    text = str(text or "").strip()
+    text = clean_text(text)
     sem_acento = "".join(
         c for c in unicodedata.normalize("NFD", text) if unicodedata.category(c) != "Mn"
     )
