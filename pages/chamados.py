@@ -15,6 +15,10 @@ from pathlib import Path
 
 import streamlit as st
 
+# Também configura a largura quando esta página é o ponto de entrada.
+# Streamlit >= 1.50 permite chamadas aditivas de set_page_config.
+st.set_page_config(layout="wide")
+
 # Garante que a raiz do projeto (onde ficam core/, services/, ui/) esteja
 # no sys.path, independente de como o Streamlit resolve o diretório de
 # execução desta página dentro de st.navigation.

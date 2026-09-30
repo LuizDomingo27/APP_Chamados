@@ -19,6 +19,10 @@ from pathlib import Path
 import streamlit as st
 import pandas as pd
 
+# Não depende da execução de app.py para evitar o layout centralizado
+# quando a página é aberta diretamente ou usada como entrada no Cloud.
+st.set_page_config(layout="wide")
+
 _ROOT = Path(__file__).resolve().parents[1]
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
