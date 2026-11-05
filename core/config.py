@@ -61,6 +61,10 @@ COL_MATERIA_PRIMA = "Linha de Matéria-Prima"
 STATUS_CONCLUIDA = "Concluída"
 STATUS_NAO_INICIADO = "Não iniciado"
 STATUS_EM_ANDAMENTO = "Em andamento"
+# Situação calculada, não vem da planilha: reposição recusada não é pendência
+# nem atendimento, seja qual for o status dela no Planner.
+STATUS_NEGADA = "Negada"
+CATEGORIA_REPOSICAO_NEGADA = "REPOSIÇÃO NEGADA"
 
 STATUS_ORDER = [STATUS_NAO_INICIADO, STATUS_EM_ANDAMENTO, STATUS_CONCLUIDA]
 STATUS_EM_ABERTO = [STATUS_NAO_INICIADO, STATUS_EM_ANDAMENTO]
@@ -124,6 +128,7 @@ STATUS_COLORS = {
     STATUS_CONCLUIDA: PALETTE["success"],
     STATUS_NAO_INICIADO: PALETTE["danger"],
     STATUS_EM_ANDAMENTO: PALETTE["warning"],
+    STATUS_NEGADA: PALETTE["text_muted"],
 }
 
 # Ordem de cores para séries categóricas (fatias de rosca, grupos de

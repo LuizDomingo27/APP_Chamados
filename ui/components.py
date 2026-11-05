@@ -249,6 +249,7 @@ def render_status_kpis(
         "Concluída": "chamados finalizados",
         "Não iniciado": "aguardando início",
         "Em andamento": "em execução",
+        "Negada": "reposições recusadas",
     }
     total = sum(v for v in status_counts.values() if isinstance(v, (int, float)))
 

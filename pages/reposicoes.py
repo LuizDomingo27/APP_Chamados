@@ -45,7 +45,7 @@ from core.config import (
 from core.utils import format_decimal, format_int, hoje_local, safe_unique_sorted
 from services.data_loader import validate_workbook
 from services.kpi_service import (
-    abertos_por_dia,
+    abertos_e_negadas_por_dia,
     agregado_por_coluna,
     card_nao_iniciado_do_dia,
     contagem_por_status,
@@ -217,7 +217,7 @@ def _render_filtros(df):
         # Campos numa linha e botões na seguinte: com os dois calendários, tudo
         # na mesma linha cortava as datas nas larguras comuns de notebook.
         c_inicio, c_fim, c_mes, c_semana, c_oficina = st.columns(
-            [1.2, 1.2, 1.4, 1.4, 2.6], vertical_alignment="bottom"
+            [1.6, 1.6, 1.2, 1.2, 2.2], vertical_alignment="bottom"
         )
         with c_inicio:
             start = render_date_filter(
@@ -329,7 +329,7 @@ def _render_dashboard(df) -> None:
     # seções de gráfico/tabela é que entram em painel — mesma divisão do
     # dashboard de referência. Ver ui.components.panel.
     render_section_title("Visão Geral")
-    col1, col2 = st.columns([1, 3])
+    col1, col2 = st.columns([1, 4])
     with col1:
         render_kpi_card(
             "Total de Reposições",
@@ -515,18 +515,19 @@ def _render_dashboard(df) -> None:
             # A rosca fica com a maior parte da linha: as tabelas têm só 2
             # colunas estreitas, enquanto o gráfico precisa de espaço para os
             # rótulos externos das fatias respirarem.
-            col_tabela, col_abertos, col_rosca = st.columns([2.8, 2.4, 4.8], gap="medium")
+            col_tabela, col_abertos, col_rosca = st.columns([2.2, 3.6, 4.2], gap="medium")
             with col_tabela:
                 render_chart_caption("Total por mês")
                 render_styled_dataframe(
-                    agregado_mes.rename(columns={"Total de Chamados": "Total de Reposições"}),
+                    agregado_mes.rename(columns={"Total de Chamados": "Total"}),
                     height=460,
                     fit_content=True,
                 )
             with col_abertos:
-                abertos_df = abertos_por_dia(filtrado)
+                abertos_df = abertos_e_negadas_por_dia(filtrado)
                 total_abertos = format_int(abertos_df["Em Aberto"].sum())
-                render_chart_caption(f"Em aberto por dia ({total_abertos})")
+                total_negadas = format_int(abertos_df["Negadas"].sum())
+                render_chart_caption(f"Em aberto ({total_abertos}) · Negadas ({total_negadas})")
                 render_styled_dataframe(
                     abertos_df, date_columns=["Data"], height=460, fit_content=True
                 )

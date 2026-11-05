@@ -48,10 +48,12 @@ _LINHA = Side(style="thin", color=_BORDA)
 _CAIXA = Border(left=_LINHA, right=_LINHA, top=_LINHA, bottom=_LINHA)
 
 # (primeira coluna, última coluna) de cada bloco, com a coluna A de margem e a
-# coluna H separando as duas tabelas.
+# coluna I separando as duas tabelas.
 _COL_DIA = 2
-_COL_MES = 9
-_ULTIMA_COL = 14
+_COL_MES = 10
+_ULTIMA_COL = 16
+# A coluna "Negadas" de cada tabela fica oculta na aba sem nenhuma negada.
+_COLUNAS_NEGADAS = ("E", "M")
 
 _LINHA_TITULO = 2
 _LINHA_SUBTITULO = 3
@@ -61,8 +63,8 @@ _LINHA_SECAO = 8
 _LINHA_CABECALHO = 9
 
 _LARGURAS = {
-    "A": 2, "B": 13, "C": 11, "D": 11, "E": 13, "F": 13, "G": 11,
-    "H": 3, "I": 17, "J": 10, "K": 11, "L": 11, "M": 13, "N": 11,
+    "A": 2, "B": 13, "C": 11, "D": 11, "E": 10, "F": 13, "G": 13, "H": 11,
+    "I": 3, "J": 17, "K": 10, "L": 11, "M": 10, "N": 11, "O": 13, "P": 11,
 }
 
 
@@ -132,14 +134,23 @@ def _escrever_titulo(ws: Worksheet, titulo: str, subtitulo: str) -> None:
 
 
 def _escrever_cards(ws: Worksheet, resumo: ResumoAtendimento) -> None:
-    cards = [
+    cards: list[tuple[int, int, str, float, str]] = [
         (2, 3, "TOTAL", resumo.total, _FORMATO_INTEIRO),
         (4, 5, "ATENDIDOS", resumo.atendidos, _FORMATO_INTEIRO),
-        (6, 7, "EM ABERTO", resumo.em_aberto, _FORMATO_INTEIRO),
-        (9, 11, "% ATENDIMENTO (SOBRE O TOTAL)", resumo.pct_atendimento, _FORMATO_PERCENTUAL),
-        (12, 14, "% EM ABERTO (SOBRE O TOTAL)", resumo.pct_em_aberto, _FORMATO_PERCENTUAL),
+        (6, 8, "EM ABERTO", resumo.em_aberto, _FORMATO_INTEIRO),
     ]
-    ws.row_dimensions[_LINHA_CARD_ROTULO].height = 20
+    if resumo.negadas:
+        cards += [
+            (10, 11, "NEGADAS", resumo.negadas, _FORMATO_INTEIRO),
+            (12, 14, "% ATENDIMENTO (SOBRE O TOTAL)", resumo.pct_atendimento, _FORMATO_PERCENTUAL),
+            (15, 16, "% EM ABERTO (SOBRE O TOTAL)", resumo.pct_em_aberto, _FORMATO_PERCENTUAL),
+        ]
+    else:
+        cards += [
+            (10, 12, "% ATENDIMENTO (SOBRE O TOTAL)", resumo.pct_atendimento, _FORMATO_PERCENTUAL),
+            (13, 16, "% EM ABERTO (SOBRE O TOTAL)", resumo.pct_em_aberto, _FORMATO_PERCENTUAL),
+        ]
+    ws.row_dimensions[_LINHA_CARD_ROTULO].height = 26
     ws.row_dimensions[_LINHA_CARD_VALOR].height = 32
     for col_ini, col_fim, rotulo, valor, formato in cards:
         for linha in (_LINHA_CARD_ROTULO, _LINHA_CARD_VALOR):
@@ -213,6 +224,9 @@ def _escrever_aba(ws: Worksheet, aba: AbaRelatorio, gerado_em: pd.Timestamp) -> 
         f"Gerado em {gerado_em:%d/%m/%Y às %H:%M}  ·  Base completa, sem filtros de tela",
     )
     _escrever_cards(ws, resumo)
+    if not resumo.negadas:
+        for coluna in _COLUNAS_NEGADAS:
+            ws.column_dimensions[coluna].hidden = True
 
     int_, pct = _FORMATO_INTEIRO, _FORMATO_PERCENTUAL
     _escrever_tabela(
@@ -220,8 +234,8 @@ def _escrever_aba(ws: Worksheet, aba: AbaRelatorio, gerado_em: pd.Timestamp) -> 
         _COL_DIA,
         "Total e acumulado por dia",
         indicadores_diarios(aba.df),
-        [_FORMATO_DATA, int_, int_, int_, pct, pct],
-        ["Total", resumo.total, resumo.atendidos, resumo.em_aberto,
+        [_FORMATO_DATA, int_, int_, int_, int_, pct, pct],
+        ["Total", resumo.total, resumo.atendidos, resumo.negadas, resumo.em_aberto,
          resumo.pct_atendimento, resumo.pct_em_aberto],
     )
     _escrever_tabela(
@@ -229,8 +243,8 @@ def _escrever_aba(ws: Worksheet, aba: AbaRelatorio, gerado_em: pd.Timestamp) -> 
         _COL_MES,
         "Total por mês",
         indicadores_mensais(aba.df),
-        [_FORMATO_MES, int_, int_, int_, pct, pct],
-        ["Total", resumo.total, resumo.atendidos, resumo.em_aberto,
+        [_FORMATO_MES, int_, int_, int_, int_, pct, pct],
+        ["Total", resumo.total, resumo.atendidos, resumo.negadas, resumo.em_aberto,
          resumo.pct_atendimento, resumo.pct_em_aberto],
     )
 

@@ -22,6 +22,7 @@ from core.config import (
     STATUS_CONCLUIDA,
     STATUS_EM_ABERTO,
     STATUS_NAO_INICIADO,
+    STATUS_NEGADA,
     STATUS_ORDER,
 )
 
@@ -78,6 +79,7 @@ class ResumoAtendimento:
     pct_em_aberto: float
     primeiro_dia: pd.Timestamp | None
     ultimo_dia: pd.Timestamp | None
+    negadas: int = 0
 
 
 @dataclass(frozen=True)
@@ -98,9 +100,13 @@ def total_chamados(df: pd.DataFrame) -> int:
 
 
 def contagem_por_status(df: pd.DataFrame) -> dict[str, int]:
-    """Devolve contagem por status, sempre incluindo as 3 chaves padrão."""
+    """Devolve contagem por status, sempre incluindo as 3 chaves padrão.
+    "Negada" só aparece quando existe no recorte, para os cards somarem o total."""
     counts = df[COL_STATUS].value_counts().to_dict()
-    return {status: int(counts.get(status, 0)) for status in STATUS_ORDER}
+    contagem = {status: int(counts.get(status, 0)) for status in STATUS_ORDER}
+    if counts.get(STATUS_NEGADA):
+        contagem[STATUS_NEGADA] = int(counts[STATUS_NEGADA])
+    return contagem
 
 
 def nao_iniciados_do_dia(df: pd.DataFrame, dia: pd.Timestamp) -> tuple[int, int]:
@@ -139,6 +145,24 @@ def abertos_por_dia(df: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
+def abertos_e_negadas_por_dia(df: pd.DataFrame) -> pd.DataFrame:
+    """Em aberto e negadas por dia de criação, do mais recente para o mais
+    antigo. Dia sem nenhum dos dois não aparece."""
+    colunas = ["Data", "Em Aberto", "Negadas"]
+    marcados = _marcar_atendimento(df)
+    if marcados.empty:
+        return pd.DataFrame(columns=colunas)
+    por_dia = _somar_por_periodo(marcados, marcados["dia"])
+    por_dia = por_dia[(por_dia["abertos"] > 0) | (por_dia["negadas"] > 0)].sort_index(ascending=False)
+    return pd.DataFrame(
+        {
+            "Data": por_dia.index,
+            "Em Aberto": por_dia["abertos"].to_numpy(),
+            "Negadas": por_dia["negadas"].to_numpy(),
+        }
+    )
+
+
 # ---------------------------------------------------------------------------
 # Relatório de atendimento (exportação)
 # ---------------------------------------------------------------------------
@@ -150,13 +174,17 @@ def _marcar_atendimento(df: pd.DataFrame) -> pd.DataFrame:
             "dia": base[COL_CRIADO_EM].dt.normalize(),
             "atendido": base[COL_STATUS] == STATUS_CONCLUIDA,
             "aberto": base[COL_STATUS].isin(STATUS_EM_ABERTO),
+            "negada": base[COL_STATUS] == STATUS_NEGADA,
         }
     )
 
 
 def _somar_por_periodo(marcados: pd.DataFrame, chave: pd.Series) -> pd.DataFrame:
     return marcados.groupby(chave).agg(
-        total=("dia", "size"), atendidos=("atendido", "sum"), abertos=("aberto", "sum")
+        total=("dia", "size"),
+        atendidos=("atendido", "sum"),
+        abertos=("aberto", "sum"),
+        negadas=("negada", "sum"),
     )
 
 
@@ -174,7 +202,7 @@ def indicadores_diarios(df: pd.DataFrame) -> pd.DataFrame:
     abertos_por_dia. Um chamado de 20/09 ainda aberto em 05/10 segue contando
     em 20/09, e não em cada dia que passou.
     """
-    colunas = ["Data", "Total do dia", "Atendidos", "Acumulado em aberto", "% Atendimento", "% Em aberto"]
+    colunas = ["Data", "Total do dia", "Atendidos", "Negadas", "Acumulado em aberto", "% Atendimento", "% Em aberto"]
     marcados = _marcar_atendimento(df)
     if marcados.empty:
         return pd.DataFrame(columns=colunas)
@@ -185,6 +213,7 @@ def indicadores_diarios(df: pd.DataFrame) -> pd.DataFrame:
             "Data": por_dia.index,
             "Total do dia": por_dia["total"].to_numpy(),
             "Atendidos": por_dia["atendidos"].to_numpy(),
+            "Negadas": por_dia["negadas"].to_numpy(),
             "Acumulado em aberto": por_dia["abertos"].to_numpy(),
         }
     )
@@ -193,7 +222,7 @@ def indicadores_diarios(df: pd.DataFrame) -> pd.DataFrame:
 
 def indicadores_mensais(df: pd.DataFrame) -> pd.DataFrame:
     """Uma linha por mês de criação; "Mês" é o primeiro dia do mês, como data."""
-    colunas = ["Mês", "Total do mês", "Atendidos", "Em aberto", "% Atendimento", "% Em aberto"]
+    colunas = ["Mês", "Total do mês", "Atendidos", "Negadas", "Em aberto", "% Atendimento", "% Em aberto"]
     marcados = _marcar_atendimento(df)
     if marcados.empty:
         return pd.DataFrame(columns=colunas)
@@ -204,6 +233,7 @@ def indicadores_mensais(df: pd.DataFrame) -> pd.DataFrame:
             "Mês": por_mes.index,
             "Total do mês": por_mes["total"].to_numpy(),
             "Atendidos": por_mes["atendidos"].to_numpy(),
+            "Negadas": por_mes["negadas"].to_numpy(),
             "Em aberto": por_mes["abertos"].to_numpy(),
         }
     )
@@ -226,6 +256,7 @@ def resumo_atendimento(df: pd.DataFrame) -> ResumoAtendimento:
         pct_em_aberto=em_aberto / total,
         primeiro_dia=marcados["dia"].min(),
         ultimo_dia=marcados["dia"].max(),
+        negadas=int(marcados["negada"].sum()),
     )
 
 

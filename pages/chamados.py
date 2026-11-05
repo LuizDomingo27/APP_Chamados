@@ -224,7 +224,7 @@ def _render_filtros(df):
         # Campos numa linha e botões na seguinte: com os dois calendários, tudo
         # na mesma linha cortava as datas nas larguras comuns de notebook.
         c_inicio, c_fim, c_mes, c_numero, c_semana, c_oficina = st.columns(
-            [1.2, 1.2, 1.3, 1.2, 1.3, 2.2], vertical_alignment="bottom"
+            [1.6, 1.6, 1.2, 1.1, 1.1, 1.9], vertical_alignment="bottom"
         )
         with c_inicio:
             start = render_date_filter(
