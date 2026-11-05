@@ -31,17 +31,19 @@ from core.config import (
     COL_CRIADO_EM,
     COL_MOTIVO,
     COL_OFICINA,
+    ESTADO_BYTES_REPOSICOES,
+    ESTADO_NOME_REPOSICOES,
     OFICINA_ALIASES_RAW,
     OFICINA_INVALID_NAMES_RAW,
     OFICINA_INVALID_NAMES_REPOSICAO_RAW,
     OFICINA_SUFIXOS_MATERIA_PRIMA,
     OFICINAS_OFICIAIS_RAW,
     PALETTE,
+    SLOT_REPOSICOES,
     TOP_N_SOLICITACOES,
 )
 from core.utils import format_decimal, format_int, hoje_local, safe_unique_sorted
-from services.data_loader import load_dados_consolidados, validate_workbook
-from services.data_format_service import normalize_reposicao_formats
+from services.data_loader import validate_workbook
 from services.kpi_service import (
     abertos_por_dia,
     agregado_por_coluna,
@@ -53,7 +55,6 @@ from services.kpi_service import (
 )
 from services.material_service import (
     TOP_N_MATERIAIS,
-    enrich_com_materia_prima,
     top_materias_primas,
     top_partes_peca,
 )
@@ -75,8 +76,8 @@ from services.reposicao_kpi_service import (
     tendencia_semanal,
 )
 from services.parser_service import canonicalizacao_fingerprint
+from services.planilhas import carregar_reposicoes
 from services.upload_cache import clear_upload, load_upload, save_upload
-from services.reposicao_parser_service import enrich_with_parsed_fields_reposicao
 from ui.charts import (
     build_categoria_bar_option,
     build_donut_option,
@@ -98,13 +99,14 @@ from ui.components import (
     render_status_kpis,
     render_styled_dataframe,
 )
+from ui.exportacao import render_botao_exportacao
 # O CSS custom é injetado uma única vez em app.py, antes do rail.
 
 # Chaves de estado próprias desta página (prefixo "rep_"), independentes
 # das usadas em Chamados ("ppc_") — os dois arquivos podem ficar
 # carregados ao mesmo tempo, cada um na sua página.
-_FILE_STATE_KEY = "rep_file_bytes"
-_FILE_NAME_KEY = "rep_file_name"
+_FILE_STATE_KEY = ESTADO_BYTES_REPOSICOES
+_FILE_NAME_KEY = ESTADO_NOME_REPOSICOES
 
 # Sinaliza que o cache em disco falhou no último upload (ver save_upload):
 # o aviso é exibido na barra de filtros, já que a tela de upload sai do ar
@@ -114,7 +116,7 @@ _CACHE_WARN_KEY = "rep_cache_warn"
 # Identificador desta página no cache em disco de uploads (ver
 # services/upload_cache.py) — separado do slot de Chamados, porque cada
 # página consome uma planilha diferente.
-_CACHE_SLOT = "reposicoes"
+_CACHE_SLOT = SLOT_REPOSICOES
 
 
 # Assinatura das regras de padronização de oficinas. Entra como argumento
@@ -133,11 +135,7 @@ _REGRAS_OFICINA = canonicalizacao_fingerprint(
 
 @st.cache_data(show_spinner=False)
 def _load_and_enrich(file_bytes: bytes, regras_oficina: str):
-    df = load_dados_consolidados(io.BytesIO(file_bytes))
-    df = enrich_with_parsed_fields_reposicao(df)
-    # A linha de matéria-prima depende de "Parte da peça" já extraída pelo
-    # parser, então entra por último no pipeline.
-    return normalize_reposicao_formats(enrich_com_materia_prima(df))
+    return carregar_reposicoes(file_bytes)
 
 
 def _render_upload_screen() -> None:
@@ -246,7 +244,9 @@ def _render_filtros(df):
                 "_select_all_oficinas_filter_rep",
             )
 
-        _, c_analise, c_reset = st.columns([5.6, 1.2, 1.6])
+        _, c_exportar, c_analise, c_reset = st.columns([3.8, 1.6, 1.3, 1.7])
+        with c_exportar:
+            render_botao_exportacao()
         with c_analise:
             abrir_analise = st.button(
                 "Visão Analítica",

@@ -30,15 +30,18 @@ from core.config import (
     COL_CRIADO_EM,
     COL_OFICINA,
     COL_SOLICITACAO,
+    ESTADO_BYTES_CHAMADOS,
+    ESTADO_NOME_CHAMADOS,
     OFICINA_ALIASES_RAW,
     OFICINA_INVALID_NAMES_RAW,
     OFICINA_SUFIXOS_MATERIA_PRIMA,
     OFICINAS_OFICIAIS_RAW,
     PALETTE,
+    SLOT_CHAMADOS,
     TOP_N_SOLICITACOES,
 )
 from core.utils import format_decimal, format_int, hoje_local, safe_unique_sorted
-from services.data_loader import load_dados_consolidados, validate_workbook
+from services.data_loader import validate_workbook
 from services.filter_service import (
     apply_all_filters,
     ha_filtro_de_periodo,
@@ -58,10 +61,8 @@ from services.kpi_service import (
     tendencia_semanal,
     total_chamados,
 )
-from services.parser_service import (
-    canonicalizacao_fingerprint,
-    enrich_with_parsed_fields,
-)
+from services.parser_service import canonicalizacao_fingerprint
+from services.planilhas import carregar_chamados
 from services.upload_cache import clear_upload, load_upload, save_upload
 from ui.charts import (
     build_categoria_bar_option,
@@ -82,6 +83,7 @@ from ui.components import (
     render_status_kpis,
     render_styled_dataframe,
 )
+from ui.exportacao import render_botao_exportacao
 # O CSS custom é injetado uma única vez em app.py, antes do rail.
 
 # Chave onde os BYTES do arquivo ficam persistidos, desacoplada da key do
@@ -91,8 +93,8 @@ from ui.components import (
 # que troque a tela renderizada) — o que fazia o app "voltar"
 # para a tela de upload sozinho. Guardando os bytes numa chave própria,
 # o estado sobrevive a qualquer rerun, independente do que é renderizado.
-_FILE_STATE_KEY = "ppc_file_bytes"
-_FILE_NAME_KEY = "ppc_file_name"
+_FILE_STATE_KEY = ESTADO_BYTES_CHAMADOS
+_FILE_NAME_KEY = ESTADO_NOME_CHAMADOS
 
 # Sinaliza que o cache em disco falhou no último upload (ver save_upload):
 # o aviso é exibido na barra de filtros, já que a tela de upload sai do ar
@@ -102,7 +104,7 @@ _CACHE_WARN_KEY = "ppc_cache_warn"
 # Identificador desta página no cache em disco de uploads: o session_state
 # morre com a sessão do navegador (F5 = tela de upload de novo), então os
 # bytes também vão para services/upload_cache.py e voltam sozinhos.
-_CACHE_SLOT = "chamados"
+_CACHE_SLOT = SLOT_CHAMADOS
 
 
 # Assinatura das regras de padronização de oficinas. Entra como argumento
@@ -120,8 +122,7 @@ _REGRAS_OFICINA = canonicalizacao_fingerprint(
 
 @st.cache_data(show_spinner=False)
 def _load_and_enrich(file_bytes: bytes, regras_oficina: str):
-    df = load_dados_consolidados(io.BytesIO(file_bytes))
-    return enrich_with_parsed_fields(df)
+    return carregar_chamados(file_bytes)
 
 
 def _render_upload_screen() -> None:
@@ -252,7 +253,9 @@ def _render_filtros(df):
                 "Oficina(s)", safe_unique_sorted(df[COL_OFICINA]), "_select_all_oficinas_filter"
             )
 
-        _, c_analise, c_reset = st.columns([5.6, 1.2, 1.6])
+        _, c_exportar, c_analise, c_reset = st.columns([3.8, 1.6, 1.3, 1.7])
+        with c_exportar:
+            render_botao_exportacao()
         with c_analise:
             abrir_analise = st.button(
                 "Visão Analítica",
