@@ -66,6 +66,7 @@ A canonicalização de nomes de oficina (`services/parser_service.py`) é reapro
 ## KPIs — Reposições
 
 - Total de reposições + totais por status (Concluída / Não iniciado / Em andamento)
+- **Reposição negada**: item da categoria "REPOSIÇÃO NEGADA" ganha a situação "Negada", seja qual for o status na planilha, com card próprio e coluna por dia na tela e no Excel. Conta no total, mas não em atendidos nem em aberto
 - **Pendências**: quantas reposições estão pendentes, quantas oficinas têm pendência e qual a espera mais longa
 - **Oficinas com reposição em aberto**: tabela com quantidade pendente, data da solicitação mais antiga e há quantos dias está em aberto (ordenada da espera mais longa para a mais curta)
 - Totais por prioridade

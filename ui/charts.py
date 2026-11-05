@@ -238,7 +238,7 @@ def build_donut_option(
         "series": [
             {
                 "type": "pie",
-                "radius": ["52%", "76%"],
+                "radius": ["40%", "60%"],
                 "center": ["50%", "44%"],
                 "avoidLabelOverlap": True,
                 # Sem isso o ECharts imprime "21.55%" — duas casas num

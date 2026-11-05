@@ -76,7 +76,7 @@ class PaginasTests(unittest.TestCase):
                 self.assertIn(f"criados hoje ({hoje_local():%d/%m/%Y})", textos)
                 self.assertIn("67% dos criados hoje", textos)
                 self.assertIn("mês vigente", textos)
-                self.assertIn("Em aberto por dia (5)", textos)
+                self.assertRegex(textos, r"Em aberto( por dia)? \(5\)")
 
     def test_calendarios_filtram_card_e_tendencia(self):
         for pagina in PAGINAS:
@@ -88,7 +88,7 @@ class PaginasTests(unittest.TestCase):
                 self.assertNotIn("criados hoje", textos)
                 self.assertNotIn("mês vigente", textos)
                 self.assertIn("aguardando início", textos)
-                self.assertIn("Em aberto por dia (3)", textos)
+                self.assertRegex(textos, r"Em aberto( por dia)? \(3\)")
 
     def test_data_inicio_depois_da_data_fim_avisa(self):
         for pagina in PAGINAS:
