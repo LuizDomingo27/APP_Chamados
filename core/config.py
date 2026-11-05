@@ -63,8 +63,14 @@ STATUS_NAO_INICIADO = "Não iniciado"
 STATUS_EM_ANDAMENTO = "Em andamento"
 
 STATUS_ORDER = [STATUS_NAO_INICIADO, STATUS_EM_ANDAMENTO, STATUS_CONCLUIDA]
+STATUS_EM_ABERTO = [STATUS_NAO_INICIADO, STATUS_EM_ANDAMENTO]
 
 DATE_FORMAT_BR = "%d/%m/%Y"
+
+# Fuso usado para definir "hoje" e o "mês vigente". É explícito porque o app
+# também roda em nuvem (servidor em UTC), onde depois das 21h o relógio do
+# servidor já estaria no dia seguinte.
+FUSO_HORARIO = "America/Sao_Paulo"
 
 # ---------------------------------------------------------------------------
 # Paleta — tema "Clean Light": fundo cinza muito claro, superfícies brancas,

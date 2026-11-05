@@ -8,6 +8,7 @@ oficina) sobre o DataFrame já enriquecido. Função pura — recebe DataFrame
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import date
 
 import pandas as pd
@@ -122,6 +123,60 @@ def filter_by_meses(df: pd.DataFrame, meses: list[str]) -> pd.DataFrame:
         lambda mes: _mes_label(mes) if pd.notna(mes) else None
     )
     return df[rotulos.isin(meses)]
+
+
+def ha_filtro_de_periodo(
+    df: pd.DataFrame,
+    start: date,
+    end: date,
+    semanas: list[str] | None = None,
+    meses: list[str] | None = None,
+) -> bool:
+    """True quando o usuário escolheu um período: datas diferentes do intervalo
+    completo da planilha, ou algum mês/semana."""
+    intervalo_completo = (df[COL_CRIADO_EM].min().date(), df[COL_CRIADO_EM].max().date())
+    return (start, end) != intervalo_completo or bool(semanas) or bool(meses)
+
+
+@dataclass(frozen=True)
+class RecorteTendencia:
+    """O que os gráficos de tendência por dia/semana devem exibir.
+
+    `legenda` explica o recorte para o usuário (vazia quando quem manda é o
+    filtro de período) e `aviso_vazio` é a mensagem para um recorte sem dados.
+    """
+
+    df: pd.DataFrame
+    legenda: str
+    aviso_vazio: str
+
+
+def recorte_tendencia(
+    df: pd.DataFrame, periodo_filtrado: bool, hoje: pd.Timestamp
+) -> RecorteTendencia:
+    """Sem período escolhido, a tendência mostra só o mês vigente; com período
+    (datas, mês ou semana), mostra exatamente o que o filtro já recortou.
+
+    O mês vigente é o do calendário, sem cair para o último mês da planilha:
+    mostrar outro mês sob esse nome faria um arquivo antigo parecer atual."""
+    if periodo_filtrado:
+        return RecorteTendencia(df, "", "Nenhum registro datado no filtro atual.")
+
+    mes = pd.Timestamp(hoje).to_period("M")
+    rotulo = _mes_label(mes)
+    ultimo = df[COL_CRIADO_EM].max()
+    ultimo_txt = (
+        f" Último registro no filtro atual: {ultimo:%d/%m/%Y}."
+        if pd.notna(ultimo)
+        else ""
+    )
+    return RecorteTendencia(
+        df[df[COL_CRIADO_EM].dt.to_period("M") == mes],
+        f"Por Dia e Por Semana: mês vigente ({rotulo}). "
+        "Para ver outros meses, use o filtro de data.",
+        f"Nenhum registro em {rotulo}.{ultimo_txt} "
+        "Para ver outros meses, use o filtro de data.",
+    )
 
 
 def apply_all_filters(

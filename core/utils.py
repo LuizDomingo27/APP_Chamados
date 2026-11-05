@@ -12,7 +12,13 @@ from typing import Iterable
 
 import pandas as pd
 
-from core.config import DATE_FORMAT_BR
+from core.config import DATE_FORMAT_BR, FUSO_HORARIO
+
+
+def hoje_local() -> pd.Timestamp:
+    """Data de hoje (00:00, sem fuso) no fuso do negócio — mesmo formato
+    das datas da planilha, para poder ser comparada direto com elas."""
+    return pd.Timestamp.now(tz=FUSO_HORARIO).tz_localize(None).normalize()
 
 
 def format_date_br(value) -> str:

@@ -1,0 +1,27 @@
+name: CI
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  checagem:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version-file: .python-version
+      - name: Instalar dependências do lockfile
+        run: pip install -r requirements-dev-lock.txt
+      - name: Tipos
+        run: mypy
+      - name: Linter
+        run: ruff check .
+      - name: Testes
+        run: python -m unittest discover tests

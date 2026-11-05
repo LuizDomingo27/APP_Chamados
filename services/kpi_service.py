@@ -19,7 +19,7 @@ from core.config import (
     COL_OFICINA,
     COL_SOLICITACAO,
     COL_STATUS,
-    STATUS_EM_ANDAMENTO,
+    STATUS_EM_ABERTO,
     STATUS_NAO_INICIADO,
     STATUS_ORDER,
 )
@@ -87,6 +87,42 @@ def contagem_por_status(df: pd.DataFrame) -> dict[str, int]:
     """Devolve contagem por status, sempre incluindo as 3 chaves padrão."""
     counts = df[COL_STATUS].value_counts().to_dict()
     return {status: int(counts.get(status, 0)) for status in STATUS_ORDER}
+
+
+def nao_iniciados_do_dia(df: pd.DataFrame, dia: pd.Timestamp) -> tuple[int, int]:
+    """Devolve (não iniciados criados no dia, total de criados no dia) — a
+    base do card "Não iniciado" quando nenhum período foi escolhido."""
+    criados = df[df[COL_CRIADO_EM].dt.normalize() == pd.Timestamp(dia).normalize()]
+    return int((criados[COL_STATUS] == STATUS_NAO_INICIADO).sum()), int(len(criados))
+
+
+def card_nao_iniciado_do_dia(df: pd.DataFrame, dia: pd.Timestamp) -> dict[str, dict]:
+    """Conteúdo do card "Não iniciado" restrito ao dia, no formato de
+    `substituicoes` de ui.components.render_status_kpis."""
+    qtd, criados = nao_iniciados_do_dia(df, dia)
+    pct = qtd / criados * 100 if criados else 0.0
+    return {
+        STATUS_NAO_INICIADO: {
+            "value": qtd,
+            "subtitle": f"criados hoje ({dia:%d/%m/%Y})",
+            "chip": f"{pct:.0f}% dos criados hoje",
+            "progress": pct,
+        }
+    }
+
+
+def abertos_por_dia(df: pd.DataFrame) -> pd.DataFrame:
+    """Itens ainda em aberto (Não iniciado + Em andamento) agrupados pelo dia
+    de criação, do mais recente para o mais antigo.
+
+    Dias sem nenhum item em aberto simplesmente não aparecem. O status da
+    planilha é o de hoje, então a contagem diz quantos itens criados naquele
+    dia CONTINUAM em aberto, e não quantos estavam abertos na data."""
+    abertos = df[df[COL_STATUS].isin(STATUS_EM_ABERTO)]
+    dias = abertos[COL_CRIADO_EM].dropna().dt.normalize()
+    out = dias.value_counts().sort_index(ascending=False).reset_index()
+    out.columns = ["Data", "Em Aberto"]
+    return out
 
 
 # ---------------------------------------------------------------------------
@@ -300,4 +336,4 @@ def calcular_analise(
 # Atalho: pendentes (não iniciado + em andamento) — útil para alertas
 # ---------------------------------------------------------------------------
 def total_pendentes(df: pd.DataFrame) -> int:
-    return int(df[COL_STATUS].isin([STATUS_NAO_INICIADO, STATUS_EM_ANDAMENTO]).sum())
+    return int(df[COL_STATUS].isin(STATUS_EM_ABERTO).sum())
