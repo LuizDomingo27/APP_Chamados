@@ -19,11 +19,19 @@ from services.filter_service import (
     filter_by_meses,
     filter_by_oficinas,
     filter_by_semanas,
+    ha_filtro_de_periodo,
     mes_options,
+    recorte_tendencia,
     semana_options,
 )
 
-__all__ = ["apply_all_filters_reposicao", "mes_options", "semana_options"]
+__all__ = [
+    "apply_all_filters_reposicao",
+    "ha_filtro_de_periodo",
+    "mes_options",
+    "recorte_tendencia",
+    "semana_options",
+]
 
 
 def apply_all_filters_reposicao(

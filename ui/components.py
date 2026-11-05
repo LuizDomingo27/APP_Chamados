@@ -21,6 +21,7 @@ Convenções desta camada:
 from __future__ import annotations
 
 from contextlib import contextmanager
+from datetime import date
 from html import escape
 from typing import Iterator
 
@@ -90,7 +91,7 @@ def _percentual(value: object) -> float | None:
     if value is None:
         return None
     try:
-        pct = float(value)
+        pct = float(value)  # type: ignore[arg-type]
     except (TypeError, ValueError):
         return None
     if pct != pct:  # NaN
@@ -228,9 +229,16 @@ _STATUS_ICONS = {
 }
 
 
-def render_status_kpis(status_counts: dict[str, int]) -> None:
+def render_status_kpis(
+    status_counts: dict[str, int],
+    substituicoes: dict[str, dict] | None = None,
+) -> None:
     """Linha de cards com a contagem por status. Cada card usa a cor e o
-    ícone fixos daquele status (ver core.config.STATUS_COLORS)."""
+    ícone fixos daquele status (ver core.config.STATUS_COLORS).
+
+    `substituicoes` troca o conteúdo do card de um status quando ele mede
+    outra base que não o recorte inteiro: {status: {"value", "subtitle",
+    "chip", "progress"}}. A proporção dos demais cards segue sobre o recorte."""
     if not status_counts:
         # st.columns(0) levanta StreamlitAPIException — sem status para
         # mostrar, a linha simplesmente não existe.
@@ -249,15 +257,19 @@ def render_status_kpis(status_counts: dict[str, int]) -> None:
         # A barra mostra o peso do status no total do recorte — a mesma
         # leitura de proporção que a referência faz nos cards de causa.
         pct = (float(qtd) / total * 100) if total else None
+        conteudo = {
+            "value": qtd,
+            "subtitle": subtitles.get(status, ""),
+            "chip": f"{pct:.0f}% do total" if pct is not None else "",
+            "progress": pct,
+            **(substituicoes or {}).get(status, {}),
+        }
         with col:
             render_kpi_card(
                 label=status,
-                value=qtd,
-                subtitle=subtitles.get(status, ""),
                 accent=STATUS_COLORS.get(status),
                 icon=_STATUS_ICONS.get(status, "dot"),
-                chip=f"{pct:.0f}% do total" if pct is not None else "",
-                progress=pct,
+                **conteudo,
             )
 
 
@@ -395,6 +407,32 @@ def render_analytics_group(titulo: str, cards: list[dict], accent: str | None = 
 # ---------------------------------------------------------------------------
 # Filtros
 # ---------------------------------------------------------------------------
+def render_date_filter(
+    label: str, padrao: date, minimo: date, maximo: date, key: str
+) -> date:
+    """
+    Calendário de uma data só, renderizado no container atual.
+
+    O valor inicial vai pelo session_state, e não por `value=`, para poder
+    voltar ao padrão quando o valor guardado não existe mais: um arquivo novo
+    muda os limites, e o Streamlit recusa um calendário fora deles. Campo
+    limpo pelo usuário também volta ao padrão.
+    """
+    atual = st.session_state.get(key)
+    if not isinstance(atual, date) or not minimo <= atual <= maximo:
+        st.session_state[key] = padrao
+
+    selecionada = st.date_input(
+        label,
+        value=None,
+        min_value=minimo,
+        max_value=maximo,
+        format="DD/MM/YYYY",
+        key=key,
+    )
+    return selecionada if isinstance(selecionada, date) else padrao
+
+
 def render_dropdown_all(label: str, options: list[str], state_key: str) -> list[str]:
     """
     Filtro dropdown (st.selectbox) com opção "Todas" no topo da lista,

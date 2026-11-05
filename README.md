@@ -55,11 +55,13 @@ A canonicalização de nomes de oficina (`services/parser_service.py`) é reapro
 - Total de chamados + totais agregados por oficina e por categoria
 - Totais por status: Concluída / Não iniciado / Em andamento
 - Totais por prioridade (Urgente / Importante / Média) + tabela ordenada pela fila de prioridade
-- Filtros: período (Criado em), número do chamado, oficina (multi-seleção com popover)
+- Filtros: data início e data fim (Criado em), número do chamado, oficina (multi-seleção com popover)
+- Sem período escolhido, o card "Não iniciado" conta só os criados hoje e a tendência por dia/semana mostra só o mês vigente; com período, ambos seguem o filtro (vale também para Reposições)
+- **Em aberto por dia**: itens não iniciados ou em andamento, agrupados pelo dia de criação; dias sem item em aberto não aparecem (vale também para Reposições)
 - Gráfico de linha de tendência diária com linha de média do período
 - Gráfico de ranking das oficinas com mais chamados (Top 10)
 - Cards de destaque: dia com mais pedidos, oficina com mais pedidos, tipo de solicitação mais comum
-- Exportação dos dados filtrados em Excel
+- **Exportar para Excel**: um único botão, nas duas páginas, gera um relatório com as abas Chamados e Reposição (base completa, sem filtros de tela): total por dia, acumulado em aberto por dia (itens ainda abertos, contados no dia em que foram criados), total por mês e % de atendimento e % em aberto
 
 ## KPIs — Reposições
 
@@ -73,7 +75,7 @@ A canonicalização de nomes de oficina (`services/parser_service.py`) é reapro
 - Ranking de oficinas que mais solicitam (Top 10) e ranking de quem mais solicita (campo "Criado por")
 - Totais agregados por oficina e por categoria
 - Tabela detalhada ordenada por prioridade, com colunas de apoio "Dias em Aberto" (pendentes) e "Tempo de Atendimento (dias)" (concluídas)
-- Exportação dos dados filtrados em Excel (3 abas: Reposições Filtradas, Por Oficina, Oficinas Pendentes)
+- Exportação para Excel: mesmo botão e mesmo relatório descritos em Chamados
 
 ### Extração dos dados de Reposições
 

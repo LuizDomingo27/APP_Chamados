@@ -30,18 +30,29 @@ from core.config import (
     COL_CRIADO_EM,
     COL_OFICINA,
     COL_SOLICITACAO,
+    ESTADO_BYTES_CHAMADOS,
+    ESTADO_NOME_CHAMADOS,
     OFICINA_ALIASES_RAW,
     OFICINA_INVALID_NAMES_RAW,
     OFICINA_SUFIXOS_MATERIA_PRIMA,
     OFICINAS_OFICIAIS_RAW,
     PALETTE,
+    SLOT_CHAMADOS,
     TOP_N_SOLICITACOES,
 )
-from core.utils import format_decimal, format_int, safe_unique_sorted
-from services.data_loader import load_dados_consolidados, validate_workbook
-from services.filter_service import apply_all_filters, mes_options, semana_options
+from core.utils import format_decimal, format_int, hoje_local, safe_unique_sorted
+from services.data_loader import validate_workbook
+from services.filter_service import (
+    apply_all_filters,
+    ha_filtro_de_periodo,
+    mes_options,
+    recorte_tendencia,
+    semana_options,
+)
 from services.kpi_service import (
+    abertos_por_dia,
     agregado_por_coluna,
+    card_nao_iniciado_do_dia,
     calcular_analise,
     calcular_destaques,
     contagem_por_status,
@@ -50,10 +61,8 @@ from services.kpi_service import (
     tendencia_semanal,
     total_chamados,
 )
-from services.parser_service import (
-    canonicalizacao_fingerprint,
-    enrich_with_parsed_fields,
-)
+from services.parser_service import canonicalizacao_fingerprint
+from services.planilhas import carregar_chamados
 from services.upload_cache import clear_upload, load_upload, save_upload
 from ui.charts import (
     build_categoria_bar_option,
@@ -65,6 +74,7 @@ from ui.components import (
     panel,
     render_analytics_group,
     render_chart_caption,
+    render_date_filter,
     render_destaque_card,
     render_dropdown_all,
     render_header,
@@ -73,6 +83,7 @@ from ui.components import (
     render_status_kpis,
     render_styled_dataframe,
 )
+from ui.exportacao import render_botao_exportacao
 # O CSS custom é injetado uma única vez em app.py, antes do rail.
 
 # Chave onde os BYTES do arquivo ficam persistidos, desacoplada da key do
@@ -82,8 +93,8 @@ from ui.components import (
 # que troque a tela renderizada) — o que fazia o app "voltar"
 # para a tela de upload sozinho. Guardando os bytes numa chave própria,
 # o estado sobrevive a qualquer rerun, independente do que é renderizado.
-_FILE_STATE_KEY = "ppc_file_bytes"
-_FILE_NAME_KEY = "ppc_file_name"
+_FILE_STATE_KEY = ESTADO_BYTES_CHAMADOS
+_FILE_NAME_KEY = ESTADO_NOME_CHAMADOS
 
 # Sinaliza que o cache em disco falhou no último upload (ver save_upload):
 # o aviso é exibido na barra de filtros, já que a tela de upload sai do ar
@@ -93,7 +104,7 @@ _CACHE_WARN_KEY = "ppc_cache_warn"
 # Identificador desta página no cache em disco de uploads: o session_state
 # morre com a sessão do navegador (F5 = tela de upload de novo), então os
 # bytes também vão para services/upload_cache.py e voltam sozinhos.
-_CACHE_SLOT = "chamados"
+_CACHE_SLOT = SLOT_CHAMADOS
 
 
 # Assinatura das regras de padronização de oficinas. Entra como argumento
@@ -111,8 +122,7 @@ _REGRAS_OFICINA = canonicalizacao_fingerprint(
 
 @st.cache_data(show_spinner=False)
 def _load_and_enrich(file_bytes: bytes, regras_oficina: str):
-    df = load_dados_consolidados(io.BytesIO(file_bytes))
-    return enrich_with_parsed_fields(df)
+    return carregar_chamados(file_bytes)
 
 
 def _render_upload_screen() -> None:
@@ -211,19 +221,20 @@ def _render_filtros(df):
     max_date = df[COL_CRIADO_EM].max()
 
     with st.expander("Filtros", expanded=True):
-        # Campos e botões na MESMA linha; vertical_alignment="bottom" alinha
-        # os botões (sem rótulo) pela base dos campos (que têm rótulo acima).
-        c_periodo, c_mes, c_numero, c_semana, c_oficina, c_analise, c_reset = st.columns(
-            [2, 1.35, 1.25, 1.5, 2, 1.3, 1.6], vertical_alignment="bottom"
+        # Campos numa linha e botões na seguinte: com os dois calendários, tudo
+        # na mesma linha cortava as datas nas larguras comuns de notebook.
+        c_inicio, c_fim, c_mes, c_numero, c_semana, c_oficina = st.columns(
+            [1.2, 1.2, 1.3, 1.2, 1.3, 2.2], vertical_alignment="bottom"
         )
-        with c_periodo:
-            date_range = st.date_input(
-                "Período (Criado em)",
-                value=(min_date.date(), max_date.date()),
-                min_value=min_date.date(),
-                max_value=max_date.date(),
-                format="DD/MM/YYYY",
-                key="ppc_date_range",
+        with c_inicio:
+            start = render_date_filter(
+                "Data início", min_date.date(), min_date.date(), max_date.date(),
+                key="ppc_data_inicio",
+            )
+        with c_fim:
+            end = render_date_filter(
+                "Data fim", max_date.date(), min_date.date(), max_date.date(),
+                key="ppc_data_fim",
             )
         with c_mes:
             meses_selecionados = render_dropdown_all(
@@ -242,6 +253,9 @@ def _render_filtros(df):
                 "Oficina(s)", safe_unique_sorted(df[COL_OFICINA]), "_select_all_oficinas_filter"
             )
 
+        _, c_exportar, c_analise, c_reset = st.columns([3.8, 1.6, 1.3, 1.7])
+        with c_exportar:
+            render_botao_exportacao()
         with c_analise:
             abrir_analise = st.button(
                 "Visão Analítica",
@@ -257,6 +271,9 @@ def _render_filtros(df):
                 st.cache_data.clear()
                 st.rerun()
 
+        if start > end:
+            st.warning("A data início está depois da data fim. Ajuste o período.")
+
         nome_arquivo = st.session_state.get(_FILE_NAME_KEY)
         if nome_arquivo:
             st.caption(f"Arquivo carregado: **{nome_arquivo}**")
@@ -266,9 +283,6 @@ def _render_filtros(df):
                 "dashboard funciona normalmente, mas será necessário enviar "
                 "a planilha de novo após atualizar a página."
             )
-
-    start, end = (date_range if isinstance(date_range, tuple) and len(date_range) == 2
-                  else (min_date.date(), max_date.date()))
 
     return (
         start,
@@ -291,6 +305,8 @@ def _render_dashboard(df) -> None:
     filtrado = apply_all_filters(
         df, start, end, numero_chamado, oficinas, semanas, meses
     )
+    periodo_filtrado = ha_filtro_de_periodo(df, start, end, semanas, meses)
+    hoje = hoje_local()
 
     with slot_header:
         render_header(
@@ -322,7 +338,14 @@ def _render_dashboard(df) -> None:
         )
     with col2:
         status_counts = contagem_por_status(filtrado)
-        render_status_kpis(status_counts)
+        # Sem período escolhido, "Não iniciado" olha só o dia atual; com
+        # período, vale o recorte, como os demais cards.
+        render_status_kpis(
+            status_counts,
+            substituicoes=(
+                None if periodo_filtrado else card_nao_iniciado_do_dia(filtrado, hoje)
+            ),
+        )
 
     # ---------------- Destaques ----------------
     render_section_title("Destaques do Período")
@@ -355,18 +378,27 @@ def _render_dashboard(df) -> None:
 
     # ---------------- Tendência (dia / semana / mês) ----------------
     with panel("Tendência de Chamados", key="ppc-tendencia"):
+        # "Por Mês" fica fora do recorte do mês vigente: restrita a um mês,
+        # a comparação entre meses viraria uma barra só.
+        recorte = recorte_tendencia(filtrado, periodo_filtrado, hoje)
+        if recorte.legenda:
+            st.caption(recorte.legenda)
         tab_dia, tab_semana, tab_mes = st.tabs(["Por Dia", "Por Semana", "Por Mês"])
         with tab_dia:
-            trend_df = tendencia_diaria(filtrado)
+            trend_df = tendencia_diaria(recorte.df)
             if not trend_df.empty:
                 render_echarts(build_trend_bar_option(trend_df), height=360)
+            else:
+                st.info(recorte.aviso_vazio)
         with tab_semana:
-            semana_df = tendencia_semanal(filtrado)
+            semana_df = tendencia_semanal(recorte.df)
             if not semana_df.empty:
                 render_echarts(
                     build_categoria_bar_option(semana_df, sort_ascending=False),
                     height=360,
                 )
+            else:
+                st.info(recorte.aviso_vazio)
         with tab_mes:
             mes_df = tendencia_mensal(filtrado)
             if not mes_df.empty:
@@ -388,13 +420,20 @@ def _render_dashboard(df) -> None:
     agregado_mes = tendencia_mensal(filtrado)
     if not agregado_mes.empty:
         with panel("Chamados por Mês", key="ppc-por-mes"):
-            # A rosca fica com 70% da linha: a tabela tem só 2 colunas
-            # estreitas e não precisa de mais que o restante, enquanto o
-            # gráfico ganha o espaço necessário para os rótulos externos das
-            # fatias respirarem.
-            col_tabela, col_rosca = st.columns([3, 7], gap="medium")
+            # A rosca fica com a maior parte da linha: as tabelas têm só 2
+            # colunas estreitas, enquanto o gráfico precisa de espaço para os
+            # rótulos externos das fatias respirarem.
+            col_tabela, col_abertos, col_rosca = st.columns([2.8, 2.4, 4.8], gap="medium")
             with col_tabela:
+                render_chart_caption("Total por mês")
                 render_styled_dataframe(agregado_mes, height=460, fit_content=True)
+            with col_abertos:
+                abertos_df = abertos_por_dia(filtrado)
+                total_abertos = format_int(abertos_df["Em Aberto"].sum())
+                render_chart_caption(f"Em aberto por dia ({total_abertos})")
+                render_styled_dataframe(
+                    abertos_df, date_columns=["Data"], height=460, fit_content=True
+                )
             with col_rosca:
                 ultimos_meses = agregado_mes.tail(3)
                 render_chart_caption(f"Últimos {len(ultimos_meses)} meses")

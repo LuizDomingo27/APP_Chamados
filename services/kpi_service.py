@@ -19,7 +19,8 @@ from core.config import (
     COL_OFICINA,
     COL_SOLICITACAO,
     COL_STATUS,
-    STATUS_EM_ANDAMENTO,
+    STATUS_CONCLUIDA,
+    STATUS_EM_ABERTO,
     STATUS_NAO_INICIADO,
     STATUS_ORDER,
 )
@@ -67,6 +68,19 @@ class ResumoAnalitico:
 
 
 @dataclass(frozen=True)
+class ResumoAtendimento:
+    """Totais do relatório exportado. Percentuais em fração (0,125 = 12,5%)."""
+
+    total: int
+    atendidos: int
+    em_aberto: int
+    pct_atendimento: float
+    pct_em_aberto: float
+    primeiro_dia: pd.Timestamp | None
+    ultimo_dia: pd.Timestamp | None
+
+
+@dataclass(frozen=True)
 class Destaques:
     dia_top_data: str
     dia_top_qtd: int
@@ -87,6 +101,132 @@ def contagem_por_status(df: pd.DataFrame) -> dict[str, int]:
     """Devolve contagem por status, sempre incluindo as 3 chaves padrão."""
     counts = df[COL_STATUS].value_counts().to_dict()
     return {status: int(counts.get(status, 0)) for status in STATUS_ORDER}
+
+
+def nao_iniciados_do_dia(df: pd.DataFrame, dia: pd.Timestamp) -> tuple[int, int]:
+    """Devolve (não iniciados criados no dia, total de criados no dia) — a
+    base do card "Não iniciado" quando nenhum período foi escolhido."""
+    criados = df[df[COL_CRIADO_EM].dt.normalize() == pd.Timestamp(dia).normalize()]
+    return int((criados[COL_STATUS] == STATUS_NAO_INICIADO).sum()), int(len(criados))
+
+
+def card_nao_iniciado_do_dia(df: pd.DataFrame, dia: pd.Timestamp) -> dict[str, dict]:
+    """Conteúdo do card "Não iniciado" restrito ao dia, no formato de
+    `substituicoes` de ui.components.render_status_kpis."""
+    qtd, criados = nao_iniciados_do_dia(df, dia)
+    pct = qtd / criados * 100 if criados else 0.0
+    return {
+        STATUS_NAO_INICIADO: {
+            "value": qtd,
+            "subtitle": f"criados hoje ({dia:%d/%m/%Y})",
+            "chip": f"{pct:.0f}% dos criados hoje",
+            "progress": pct,
+        }
+    }
+
+
+def abertos_por_dia(df: pd.DataFrame) -> pd.DataFrame:
+    """Itens ainda em aberto (Não iniciado + Em andamento) agrupados pelo dia
+    de criação, do mais recente para o mais antigo.
+
+    Dias sem nenhum item em aberto simplesmente não aparecem. O status da
+    planilha é o de hoje, então a contagem diz quantos itens criados naquele
+    dia CONTINUAM em aberto, e não quantos estavam abertos na data."""
+    abertos = df[df[COL_STATUS].isin(STATUS_EM_ABERTO)]
+    dias = abertos[COL_CRIADO_EM].dropna().dt.normalize()
+    out = dias.value_counts().sort_index(ascending=False).reset_index()
+    out.columns = ["Data", "Em Aberto"]
+    return out
+
+
+# ---------------------------------------------------------------------------
+# Relatório de atendimento (exportação)
+# ---------------------------------------------------------------------------
+def _marcar_atendimento(df: pd.DataFrame) -> pd.DataFrame:
+    """Itens datados, com o dia de criação e a situação atual de cada um."""
+    base = df.dropna(subset=[COL_CRIADO_EM])
+    return pd.DataFrame(
+        {
+            "dia": base[COL_CRIADO_EM].dt.normalize(),
+            "atendido": base[COL_STATUS] == STATUS_CONCLUIDA,
+            "aberto": base[COL_STATUS].isin(STATUS_EM_ABERTO),
+        }
+    )
+
+
+def _somar_por_periodo(marcados: pd.DataFrame, chave: pd.Series) -> pd.DataFrame:
+    return marcados.groupby(chave).agg(
+        total=("dia", "size"), atendidos=("atendido", "sum"), abertos=("aberto", "sum")
+    )
+
+
+def _com_percentuais(out: pd.DataFrame, total: str, atendidos: str, abertos: str) -> pd.DataFrame:
+    out["% Atendimento"] = out[atendidos] / out[total]
+    out["% Em aberto"] = out[abertos] / out[total]
+    return out
+
+
+def indicadores_diarios(df: pd.DataFrame) -> pd.DataFrame:
+    """Uma linha por dia de criação, em ordem cronológica.
+
+    Todo item pertence ao dia em que foi aberto: "Acumulado em aberto" conta os
+    criados naquele dia que continuam abertos hoje, mesma regra de
+    abertos_por_dia. Um chamado de 20/09 ainda aberto em 05/10 segue contando
+    em 20/09, e não em cada dia que passou.
+    """
+    colunas = ["Data", "Total do dia", "Atendidos", "Acumulado em aberto", "% Atendimento", "% Em aberto"]
+    marcados = _marcar_atendimento(df)
+    if marcados.empty:
+        return pd.DataFrame(columns=colunas)
+
+    por_dia = _somar_por_periodo(marcados, marcados["dia"])
+    out = pd.DataFrame(
+        {
+            "Data": por_dia.index,
+            "Total do dia": por_dia["total"].to_numpy(),
+            "Atendidos": por_dia["atendidos"].to_numpy(),
+            "Acumulado em aberto": por_dia["abertos"].to_numpy(),
+        }
+    )
+    return _com_percentuais(out, "Total do dia", "Atendidos", "Acumulado em aberto")[colunas]
+
+
+def indicadores_mensais(df: pd.DataFrame) -> pd.DataFrame:
+    """Uma linha por mês de criação; "Mês" é o primeiro dia do mês, como data."""
+    colunas = ["Mês", "Total do mês", "Atendidos", "Em aberto", "% Atendimento", "% Em aberto"]
+    marcados = _marcar_atendimento(df)
+    if marcados.empty:
+        return pd.DataFrame(columns=colunas)
+
+    por_mes = _somar_por_periodo(marcados, marcados["dia"].dt.to_period("M").dt.start_time)
+    out = pd.DataFrame(
+        {
+            "Mês": por_mes.index,
+            "Total do mês": por_mes["total"].to_numpy(),
+            "Atendidos": por_mes["atendidos"].to_numpy(),
+            "Em aberto": por_mes["abertos"].to_numpy(),
+        }
+    )
+    return _com_percentuais(out, "Total do mês", "Atendidos", "Em aberto")[colunas]
+
+
+def resumo_atendimento(df: pd.DataFrame) -> ResumoAtendimento:
+    """Totais gerais: o % em aberto é o peso dos abertos sobre todos os itens."""
+    marcados = _marcar_atendimento(df)
+    total = len(marcados)
+    if not total:
+        return ResumoAtendimento(0, 0, 0, 0.0, 0.0, None, None)
+    atendidos = int(marcados["atendido"].sum())
+    em_aberto = int(marcados["aberto"].sum())
+    return ResumoAtendimento(
+        total=total,
+        atendidos=atendidos,
+        em_aberto=em_aberto,
+        pct_atendimento=atendidos / total,
+        pct_em_aberto=em_aberto / total,
+        primeiro_dia=marcados["dia"].min(),
+        ultimo_dia=marcados["dia"].max(),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -300,4 +440,4 @@ def calcular_analise(
 # Atalho: pendentes (não iniciado + em andamento) — útil para alertas
 # ---------------------------------------------------------------------------
 def total_pendentes(df: pd.DataFrame) -> int:
-    return int(df[COL_STATUS].isin([STATUS_NAO_INICIADO, STATUS_EM_ANDAMENTO]).sum())
+    return int(df[COL_STATUS].isin(STATUS_EM_ABERTO).sum())

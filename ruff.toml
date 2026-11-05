@@ -1,0 +1,11 @@
+target-version = "py312"
+extend-exclude = [".cache_uploads"]
+
+[lint]
+select = ["E4", "E7", "E9", "F"]
+
+[lint.per-file-ignores]
+# As páginas ajustam o sys.path e a configuração do Streamlit antes dos imports.
+"pages/*.py" = ["E402"]
+# O teste legado importa as constantes de core.config com curinga.
+"tests/test_reposicoes.py" = ["F403", "F405"]

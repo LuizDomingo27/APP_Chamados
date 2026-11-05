@@ -63,8 +63,23 @@ STATUS_NAO_INICIADO = "Não iniciado"
 STATUS_EM_ANDAMENTO = "Em andamento"
 
 STATUS_ORDER = [STATUS_NAO_INICIADO, STATUS_EM_ANDAMENTO, STATUS_CONCLUIDA]
+STATUS_EM_ABERTO = [STATUS_NAO_INICIADO, STATUS_EM_ANDAMENTO]
 
 DATE_FORMAT_BR = "%d/%m/%Y"
+
+# Onde cada página guarda a própria planilha (sessão e cache em disco). Ficam
+# aqui porque a exportação precisa encontrar as duas, de qualquer página.
+ESTADO_BYTES_CHAMADOS = "ppc_file_bytes"
+ESTADO_NOME_CHAMADOS = "ppc_file_name"
+SLOT_CHAMADOS = "chamados"
+ESTADO_BYTES_REPOSICOES = "rep_file_bytes"
+ESTADO_NOME_REPOSICOES = "rep_file_name"
+SLOT_REPOSICOES = "reposicoes"
+
+# Fuso usado para definir "hoje" e o "mês vigente". É explícito porque o app
+# também roda em nuvem (servidor em UTC), onde depois das 21h o relógio do
+# servidor já estaria no dia seguinte.
+FUSO_HORARIO = "America/Sao_Paulo"
 
 # ---------------------------------------------------------------------------
 # Paleta — tema "Clean Light": fundo cinza muito claro, superfícies brancas,
