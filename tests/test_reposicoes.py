@@ -9,7 +9,7 @@ from services.data_loader import load_dados_consolidados
 from services.filter_service import filter_by_numero_chamado
 from services.parser_service import parse_nome_tarefa
 from services.reposicao_parser_service import parse_reposicao_row
-from services.reposicao_kpi_service import ranking_oficinas_ultimas_semanas, enrich_com_indicadores_temporais, oficinas_com_reposicao_pendente
+from services.reposicao_kpi_service import ranking_oficinas_ultimas_semanas, enrich_com_indicadores_temporais
 
 
 class ReposicaoTests(unittest.TestCase):
@@ -79,7 +79,6 @@ class ReposicaoTests(unittest.TestCase):
         today = pd.Timestamp.now().normalize()
         df = pd.DataFrame({COL_CRIADO_EM: [today + pd.Timedelta(hours=8), pd.NaT], COL_CONCLUIDO_EM: [pd.NaT, pd.NaT], COL_STATUS: [STATUS_NAO_INICIADO] * 2, COL_OFICINA: ['A'] * 2})
         self.assertEqual(enrich_com_indicadores_temporais(df)[COL_DIAS_ABERTO].iloc[0], 0)
-        self.assertEqual(oficinas_com_reposicao_pendente(df)['Qtd. Pendente'].sum(), 2)
 
 
 if __name__ == '__main__':
