@@ -17,7 +17,6 @@ import sys
 from pathlib import Path
 
 import streamlit as st
-import pandas as pd
 
 # Não depende da execução de app.py para evitar o layout centralizado
 # quando a página é aberta diretamente ou usada como entrada no Cloud.
@@ -51,7 +50,6 @@ from services.kpi_service import (
     contagem_por_status,
     tendencia_diaria,
     total_chamados,
-    total_pendentes,
 )
 from services.material_service import (
     TOP_N_MATERIAIS,
@@ -69,7 +67,6 @@ from services.reposicao_kpi_service import (
     calcular_analise_reposicao,
     calcular_destaques_reposicao,
     enrich_com_indicadores_temporais,
-    oficinas_com_reposicao_pendente,
     ranking_oficinas_ultimas_semanas,
     tempo_atendimento_stats,
     tendencia_mensal,
@@ -347,45 +344,6 @@ def _render_dashboard(df) -> None:
                 None if periodo_filtrado else card_nao_iniciado_do_dia(filtrado, hoje)
             ),
         )
-
-    # ---------------- Pendências ----------------
-    render_section_title("Pendências")
-    qtd_pendentes = total_pendentes(filtrado)
-    oficinas_pendentes_df = oficinas_com_reposicao_pendente(filtrado)
-    p1, p2 = st.columns([1, 3])
-    with p1:
-        render_kpi_card(
-            "Reposições Pendentes",
-            qtd_pendentes,
-            subtitle="aguardando ou em andamento",
-            accent=PALETTE["pink"],
-            icon="clock",
-        )
-    with p2:
-        if not oficinas_pendentes_df.empty:
-            espera = oficinas_pendentes_df["Dias em Aberto"].max()
-            dias_max = int(espera) if pd.notna(espera) else None
-            oficina_mais_antiga = str(oficinas_pendentes_df.iloc[0][COL_OFICINA])
-            qtd_oficinas_pendentes = int(oficinas_pendentes_df[COL_OFICINA].nunique())
-            sub1, sub2 = st.columns(2)
-            with sub1:
-                render_kpi_card(
-                    "Oficinas com Pendência",
-                    qtd_oficinas_pendentes,
-                    subtitle="aguardando reposição",
-                    accent=PALETTE["amber"],
-                    icon="factory",
-                )
-            with sub2:
-                render_kpi_card(
-                    "Espera Mais Longa",
-                    f"{dias_max} dia(s)" if dias_max is not None else "Sem data",
-                    subtitle=f"{oficina_mais_antiga}",
-                    accent=PALETTE["amber"],
-                    icon="calendar",
-                )
-        else:
-            st.success("Nenhuma reposição pendente no filtro atual.")
 
     # ---------------- Destaques ----------------
     render_section_title("Destaques do Período")

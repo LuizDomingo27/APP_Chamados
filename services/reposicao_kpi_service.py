@@ -162,33 +162,6 @@ def enrich_com_indicadores_temporais(df: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
-# ---------------------------------------------------------------------------
-# Oficinas com reposição em aberto
-# ---------------------------------------------------------------------------
-def oficinas_com_reposicao_pendente(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Para cada oficina com reposições pendentes (Não iniciado / Em
-    andamento), calcula a quantidade pendente, a data da solicitação
-    mais antiga e há quantos dias ela está em aberto — para priorizar o
-    atendimento de quem espera há mais tempo.
-    """
-    colunas_saida = [COL_OFICINA, "Qtd. Pendente", "Solicitação Mais Antiga", "Dias em Aberto"]
-    pendentes = df[df[COL_STATUS].isin([STATUS_NAO_INICIADO, STATUS_EM_ANDAMENTO])].copy()
-    if pendentes.empty:
-        return pd.DataFrame(columns=colunas_saida)
-
-    agora = pd.Timestamp.now().normalize()
-    agrupado = (
-        pendentes.groupby(COL_OFICINA, dropna=False)[COL_CRIADO_EM]
-        .agg(["size", "min"])
-        .reset_index()
-    )
-    agrupado.columns = [COL_OFICINA, "Qtd. Pendente", "Solicitação Mais Antiga"]
-    agrupado["Dias em Aberto"] = (agora - agrupado["Solicitação Mais Antiga"].dt.normalize()).dt.days.clip(lower=0)
-    agrupado = agrupado.sort_values("Dias em Aberto", ascending=False).reset_index(drop=True)
-    return agrupado[colunas_saida]
-
-
 def ranking_oficinas_ultimas_semanas(
     df: pd.DataFrame, oficinas: list[str] | None = None,
 ) -> tuple[pd.DataFrame, pd.Timestamp | None, pd.Timestamp | None]:

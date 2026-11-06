@@ -40,7 +40,7 @@ APP_PPCHAMADO/
 │   ├── reposicao_parser_service.py # Extrai nº/oficina/ordem de produção/parte da peça/motivo
 │   ├── reposicao_filter_service.py # Filtros de Reposições (data, nº reposição, oficina)
 │   └── reposicao_kpi_service.py    # KPIs específicos: tendência semanal/mensal, tempo de
-│                                    # atendimento e oficinas pendentes
+│                                    # atendimento e recorrência de oficinas
 └── ui/
     ├── styles.py                   # CSS do tema dark teal/lime (compartilhado)
     ├── icons.py                     # Ícones de traço em SVG inline (sem emoji)
@@ -67,8 +67,6 @@ A canonicalização de nomes de oficina (`services/parser_service.py`) é reapro
 
 - Total de reposições + totais por status (Concluída / Não iniciado / Em andamento)
 - **Reposição negada**: item da categoria "REPOSIÇÃO NEGADA" ganha a situação "Negada", seja qual for o status na planilha, com card próprio e coluna por dia na tela e no Excel. Conta no total, mas não em atendidos nem em aberto
-- **Pendências**: quantas reposições estão pendentes, quantas oficinas têm pendência e qual a espera mais longa
-- **Oficinas com reposição em aberto**: tabela com quantidade pendente, data da solicitação mais antiga e há quantos dias está em aberto (ordenada da espera mais longa para a mais curta)
 - Totais por prioridade
 - Destaques do período: dia com mais solicitações, oficina que mais solicita, categoria mais comum
 - **Tempo de atendimento**: média, mediana, mínimo e máximo (em dias), calculado sobre reposições já concluídas (Concluído em − Criado em)
