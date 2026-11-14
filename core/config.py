@@ -54,6 +54,9 @@ COL_TEMPO_ATENDIMENTO_DIAS = "Tempo de Atendimento (dias)"
 # Elaborado). Derivada por services/material_service.py a partir do texto
 # de "Nome da tarefa" — ver core/materia_prima_normalize.py.
 COL_MATERIA_PRIMA = "Linha de Matéria-Prima"
+# Item secundário pedido (Filme Plástico, Lacre, Pistola...) ou vazio quando
+# a reposição é de parte da peça. Ver core/item_secundario.py.
+COL_ITEM_SECUNDARIO = "Item Secundário"
 
 # ---------------------------------------------------------------------------
 # Domínio / regras de negócio
