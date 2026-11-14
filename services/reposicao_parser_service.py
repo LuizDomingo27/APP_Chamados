@@ -36,6 +36,7 @@ import pandas as pd
 
 from core.config import (
     COL_CATEGORIA,
+    COL_ITEM_SECUNDARIO,
     COL_MOTIVO,
     COL_NOME_TAREFA,
     COL_NOTAS,
@@ -48,6 +49,7 @@ from core.config import (
     OFICINA_INVALID_NAMES_REPOSICAO_RAW,
     OFICINAS_OFICIAIS_RAW,
 )
+from core.item_secundario import classificar_item_secundario
 from core.motivo_normalize import canonicalize_motivo
 from core.text_normalize import clean_text
 from services.parser_service import canonicalize_oficinas, remove_invalid_oficinas
@@ -120,6 +122,7 @@ def parse_reposicao_row(nome_tarefa: str, notas: str) -> dict[str, str | None]:
     parte = _extract_label(notas_txt, "Parte da peça")
     motivo = _extract_label(notas_txt, "Motivo")
     quantidade = _extract_label(notas_txt, "Quantidade")
+    observacoes = _extract_label(notas_txt, "Observações")
 
     # A ordem no título pode divergir das Notas. Retira apenas um token
     # de nove dígitos delimitado por hífens, preservando nomes empresariais.
@@ -170,6 +173,9 @@ def parse_reposicao_row(nome_tarefa: str, notas: str) -> dict[str, str | None]:
         # motivos se fragmenta e nenhuma fatia reflete o volume real.
         COL_MOTIVO: canonicalize_motivo(motivo) if motivo else _VAZIO,
         COL_QUANTIDADE_REPOSICAO: quantidade or _VAZIO,
+        # Classificado pelo texto ORIGINAL da parte, antes de qualquer
+        # padronização, para o algoritmo ver a grafia digitada.
+        COL_ITEM_SECUNDARIO: classificar_item_secundario(parte, observacoes) or "",
     }
 
 
@@ -187,7 +193,7 @@ def enrich_with_parsed_fields_reposicao(df: pd.DataFrame) -> pd.DataFrame:
     """
     if df.empty:
         out = df.copy()
-        for col in [COL_NUM_REPOSICAO, COL_OFICINA, COL_ORDEM_PRODUCAO, COL_PARTE_PECA, COL_MOTIVO, COL_QUANTIDADE_REPOSICAO]:
+        for col in [COL_NUM_REPOSICAO, COL_OFICINA, COL_ORDEM_PRODUCAO, COL_PARTE_PECA, COL_MOTIVO, COL_QUANTIDADE_REPOSICAO, COL_ITEM_SECUNDARIO]:
             out[col] = pd.Series(index=out.index, dtype="string")
         return out
     parsed = df.apply(
@@ -203,6 +209,7 @@ def enrich_with_parsed_fields_reposicao(df: pd.DataFrame) -> pd.DataFrame:
         COL_PARTE_PECA,
         COL_MOTIVO,
         COL_QUANTIDADE_REPOSICAO,
+        COL_ITEM_SECUNDARIO,
     ]
     out[cols] = parsed[cols]
     out = remove_invalid_oficinas(

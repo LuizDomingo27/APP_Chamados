@@ -25,7 +25,13 @@ from dataclasses import dataclass
 
 import pandas as pd
 
-from core.config import COL_MATERIA_PRIMA, COL_NOME_TAREFA, COL_PARTE_PECA
+from core.config import (
+    COL_ITEM_SECUNDARIO,
+    COL_MATERIA_PRIMA,
+    COL_NOME_TAREFA,
+    COL_PARTE_PECA,
+)
+from core.item_secundario import ITENS_SECUNDARIOS
 from core.materia_prima_normalize import (
     MATERIA_PRIMA_NAO_INFORMADA,
     extrair_materia_prima,
@@ -125,3 +131,28 @@ def top_materias_primas(df: pd.DataFrame, top_n: int = TOP_N_MATERIAIS) -> list[
 def top_partes_peca(df: pd.DataFrame, top_n: int = TOP_N_MATERIAIS) -> list[ItemRanking]:
     """Pódio das partes da peça mais solicitadas em reposição."""
     return _ranking(df, COL_PARTE_PECA, top_n)
+
+
+@dataclass(frozen=True)
+class ResumoItensSecundarios:
+    """Card de itens secundários: quantos chamados, quanto do recorte e
+    quais itens, já posicionados."""
+
+    total: int
+    percentual: float
+    itens: list[ItemRanking]
+
+
+def resumo_itens_secundarios(df: pd.DataFrame) -> ResumoItensSecundarios:
+    """Reposições cujo item pedido é secundário (filme plástico, lacre,
+    pistola...), com a quebra por item. O percentual do total é sobre todas
+    as reposições do recorte; o de cada item, sobre os secundários."""
+    if not isinstance(df, pd.DataFrame) or df.empty or COL_ITEM_SECUNDARIO not in df.columns:
+        return ResumoItensSecundarios(0, 0.0, [])
+    secundario = df[COL_ITEM_SECUNDARIO].fillna("").astype(str).str.strip().ne("")
+    total = int(secundario.sum())
+    return ResumoItensSecundarios(
+        total=total,
+        percentual=round(total / len(df) * 100, 1),
+        itens=_ranking(df, COL_ITEM_SECUNDARIO, len(ITENS_SECUNDARIOS)),
+    )

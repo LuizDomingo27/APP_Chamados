@@ -53,6 +53,7 @@ from services.kpi_service import (
 )
 from services.material_service import (
     TOP_N_MATERIAIS,
+    resumo_itens_secundarios,
     top_materias_primas,
     top_partes_peca,
 )
@@ -121,7 +122,7 @@ _CACHE_SLOT = SLOT_REPOSICOES
 # invalide o cache — sem isso o dashboard segue mostrando os nomes
 # calculados pela versão anterior das regras.
 _REGRAS_OFICINA = canonicalizacao_fingerprint(
-    "formato_dados_v2",
+    "formato_dados_v3",
     OFICINAS_OFICIAIS_RAW,
     OFICINA_ALIASES_RAW,
     OFICINA_INVALID_NAMES_RAW,
@@ -373,6 +374,30 @@ def _render_dashboard(df) -> None:
             icon="tag",
             accent=PALETTE["amber"],
         )
+
+    # ---------------- Itens secundários ----------------
+    # Material de apoio da oficina (filme plástico, lacre, pistola...), que
+    # não é parte da peça. A classificação vem do campo "Parte da peça" das
+    # Notas — ver core/item_secundario.py.
+    secundarios = resumo_itens_secundarios(filtrado)
+    render_section_title("Itens Secundários")
+    s1, s2 = st.columns([1, 2], gap="medium")
+    with s1:
+        render_kpi_card(
+            "Reposições de Itens Secundários",
+            secundarios.total,
+            subtitle="filme, lacre, papelão, pistola, sacos, capas e artoks",
+            accent=PALETTE["amber"],
+            icon="tag",
+            chip=f"{secundarios.percentual:.1f}% do total".replace(".", ","),
+            progress=secundarios.percentual,
+        )
+    with s2:
+        with panel("Itens Secundários Solicitados", key="rep-itens-secundarios"):
+            render_rank_list(
+                secundarios.itens,
+                vazio="Nenhuma reposição de item secundário no filtro atual.",
+            )
 
     # ---------------- Tempo de atendimento ----------------
     render_section_title("Tempo de Atendimento")
